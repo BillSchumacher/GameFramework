@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameFramework", "GameFramework.csproj", "{2370D514-B360-4072-B101-331AE8FB9260}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameFramework.Tests", "tests\GameFramework.Tests.csproj", "{FDE6000C-9CF6-47A0-B31E-ADFA75E819BB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2370D514-B360-4072-B101-331AE8FB9260}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2370D514-B360-4072-B101-331AE8FB9260}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2370D514-B360-4072-B101-331AE8FB9260}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2370D514-B360-4072-B101-331AE8FB9260}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDE6000C-9CF6-47A0-B31E-ADFA75E819BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDE6000C-9CF6-47A0-B31E-ADFA75E819BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDE6000C-9CF6-47A0-B31E-ADFA75E819BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDE6000C-9CF6-47A0-B31E-ADFA75E819BB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

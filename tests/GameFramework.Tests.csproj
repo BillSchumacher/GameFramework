@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
+    <!-- Define a clean output path strategy -->
+    <OutputPath>..\bin\$(Configuration)\$(TargetFramework)\tests\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <RunSettingsFilePath>..\default.runsettings</RunSettingsFilePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Moq" Version="4.20.70" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GameFramework.csproj" />
+    <ProjectReference Include="..\SampleGame\SampleGame.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Components\MeshComponentTests.cs" />
+    <Compile Include="Components\SpriteComponentTests.cs" />
+    <Compile Include="Components\LightComponentTests.cs" />
+    <Compile Include="Components\ComponentTests.cs" />
+    <Compile Include="Core\GameCreationTests.cs" />
+    <Compile Include="Core\GameLoopTests.cs" />
+    <Compile Include="Core\CameraTests.cs" />
+    <Compile Include="Core\LightTests.cs" />
+    <Compile Include="Core\PlayerActionTests.cs" />
+    <Compile Include="Core\PlayerTests.cs" />
+    <Compile Include="Core\UserInterfaceTests.cs" />
+    <Compile Include="Core\WebServerTests.cs" />
+    <Compile Include="Core\WidgetTests.cs" />
+    <Compile Include="Core\WorldObjectTests.cs" />
+    <Compile Include="Core\WorldTests.cs" />
+  </ItemGroup>
+
+</Project>
