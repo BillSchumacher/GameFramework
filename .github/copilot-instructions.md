@@ -32,6 +32,31 @@ Assume that commands are run in powershell unless otherwise specified.
 3. **Platform-Specific Testing**: Configure test environments for web, mobile, and desktop platforms to ensure compatibility.
 4. **Automated Testing**: Integrate automated testing tools like `dotnet test` to streamline the testing process.
 
+## Project Context and Key Files
+
+This is a game creation framework designed for building games across web, mobile, and desktop platforms. The core of the framework is developed in C# for performance and cross-platform capabilities, while Python is utilized for scripting to offer flexibility to game developers.
+
+### Key Directories and Files:
+
+*   **`GameFramework.csproj`**: The main C# project file for the core game framework library.
+*   **`src/`**: Contains the source code for the GameFramework.
+    *   **`src/Core/`**: Houses essential classes like `World.cs` (manages game objects), `WorldObject.cs` (base class for game entities), `Player.cs`, and `BaseAction.cs` (for defining actions).
+    *   **`src/Components/`**: Includes various components that can be attached to `WorldObject`s, such as `LightComponent.cs`, `MeshComponent.cs`, and `SpriteComponent.cs`.
+    *   **`src/Interfaces/`**: Defines crucial interfaces like `IComponent.cs`.
+*   **`tests/`**: Contains all unit and integration tests for the framework, using xUnit.
+    *   **`GameFramework.Tests.csproj`**: The C# project file for the test suite.
+    *   **`tests/Core/`**: Contains tests for the core functionalities.
+    *   **`tests/Components/`**: Contains tests for the component system.
+*   **`SampleGame/`**: An example project demonstrating how to use the GameFramework.
+    *   **`SampleGame.csproj`**: The C# project file for the sample game.
+    *   **`Program.cs`**: The main entry point for the `SampleGame`.
+*   **`.vscode/`**: Contains VS Code specific settings and tasks.
+    *   **`tasks.json`**: Defines build and run tasks (e.g., `Build GameFramework`, `Run GameFramework`).
+    *   **`settings.json`**: Workspace-specific settings for VS Code.
+*   **`.github/copilot-instructions.md`**: This file, providing tailored instructions and context for GitHub Copilot to improve its assistance within this project.
+*   **`README.md`**: Provides a general overview of the project, setup instructions, and features.
+*   **`default.runsettings`**: Configuration file for running tests with `dotnet test`.
+
 ## Running the Test Suite
 To run the test suite and ensure all tests pass:
 
