@@ -55,4 +55,10 @@
     <Compile Include="Core\WorldTests.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="TestAssets\arial.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
