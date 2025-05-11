@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GameFramework.UI; // Added using directive for the new UI namespace
 
 namespace GameFramework
 {

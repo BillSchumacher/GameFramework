@@ -1,5 +1,6 @@
 using Xunit;
 using GameFramework;
+using GameFramework.UI; // Added for UI elements
 using System;
 using System.Linq;
 

@@ -1,12 +1,12 @@
 using System;
 
-namespace GameFramework
+namespace GameFramework.UI // Changed namespace
 {
     public class CheckboxWidget : Widget
     {
         public string Label { get; private set; }
         public bool IsChecked { get; private set; }
-        public event Action<bool>? OnCheckedChanged;
+        public event Action<bool>? OnCheckedChanged; // Made nullable
 
         public CheckboxWidget(string id, int x, int y, string label, bool initialIsChecked = false) : base(id, x, y)
         {

@@ -1,6 +1,6 @@
 using System;
 
-namespace GameFramework
+namespace GameFramework.UI // Changed namespace
 {
     public class TextFieldWidget : Widget
     {

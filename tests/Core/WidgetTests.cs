@@ -1,8 +1,8 @@
 using Xunit;
-using GameFramework;
+using GameFramework.UI; // Changed from GameFramework
 using System;
 
-namespace GameFramework.Tests
+namespace GameFramework.Tests.Core // Changed from GameFramework.Tests
 {
     public class WidgetTests
     {

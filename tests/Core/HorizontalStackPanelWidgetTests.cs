@@ -1,5 +1,5 @@
 using Xunit;
-using GameFramework;
+using GameFramework.UI;
 using System;
 using Moq;
 

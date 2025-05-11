@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GameFramework
+namespace GameFramework.UI // Changed namespace
 {
     public abstract class StackPanelWidget : Widget
     {

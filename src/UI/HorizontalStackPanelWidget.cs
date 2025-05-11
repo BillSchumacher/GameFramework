@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace GameFramework
+namespace GameFramework.UI // Changed namespace
 {
     public class HorizontalStackPanelWidget : StackPanelWidget
     {
