@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Game</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #gameInfo { padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Welcome to the Sample Game!</h1>
+    <div id="gameInfo">
+        <p>Loading game data...</p>
+    </div>
+
+    <script>
+        async function fetchGameData() {
+            try {
+                const response = await fetch('/game');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                displayGameData(data);
+            } catch (error) {
+                document.getElementById('gameInfo').innerHTML = `<p>Error loading game data: ${error.message}</p>`;
+                console.error('Error fetching game data:', error);
+            }
+        }
+
+        function displayGameData(data) {
+            const gameInfoDiv = document.getElementById('gameInfo');
+            // Assuming data has a 'players' array and 'worldObjects' count for now
+            let html = '<h2>Game State</h2>';
+            html += `<p>Total objects in world: ${data.worldObjectsCount || 0}</p>`;
+            if (data.players && data.players.length > 0) {
+                html += '<h3>Players:</h3><ul>';
+                data.players.forEach(player => {
+                    html += `<li>${player.name} (Score: ${player.score || 0})</li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p>No players in the game yet.</p>';
+            }
+            gameInfoDiv.innerHTML = html;
+        }
+
+        // Fetch data when the page loads
+        fetchGameData();
+    </script>
+</body>
+</html>
