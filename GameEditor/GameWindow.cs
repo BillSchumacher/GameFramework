@@ -49,7 +49,10 @@ namespace GameEditor
         private ButtonWidget? _scalableButton;
 
         private Profiler _profiler; // Added Profiler instance
-        private bool _logProfilerToConsole = true; // Option to log profiler to console
+        private bool _logProfilerToConsole = false; // Option to log profiler to console, default false
+        private double _profilerUpdateInterval = 0.5; // Update profiler display every 0.5 second
+        private double _timeSinceLastProfilerUpdate = 0.0;
+        private bool _isDirty = true; // Flag to indicate UI needs redraw for structural changes
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -246,6 +249,7 @@ namespace GameEditor
                     if (_controlledScale != null)
                     {
                         _controlledScale.CurrentValue += 10;
+                        _isDirty = true; // UI state changed
                     }
                 };
 
@@ -264,7 +268,10 @@ namespace GameEditor
                     offsetY: -100 
                 );
                 _horizontalScale.BackgroundColor = new Vector4(0.4f, 0.4f, 0.4f, 1.0f); // Added background color
-                _horizontalScale.OnValueChanged += (value) => Console.WriteLine($"Horizontal Scale Value: {value}");
+                _horizontalScale.OnValueChanged += (value) => {
+                    Console.WriteLine($"Horizontal Scale Value: {value}");
+                    _isDirty = true; // UI state changed
+                };
 
                 // Vertical ScaleWidget
                 _verticalScale = new ScaleWidget(
@@ -281,7 +288,10 @@ namespace GameEditor
                     offsetY: -75   
                 );
                 _verticalScale.BackgroundColor = new Vector4(0.4f, 0.4f, 0.4f, 1.0f); // Added background color
-                _verticalScale.OnValueChanged += (value) => Console.WriteLine($"Vertical Scale Value: {value}");
+                _verticalScale.OnValueChanged += (value) => {
+                    Console.WriteLine($"Vertical Scale Value: {value}");
+                    _isDirty = true; // UI state changed
+                };
 
                 // Controlled ScaleWidget and its Label
                 _controlledScaleLabel = new LabelWidget(
@@ -314,9 +324,9 @@ namespace GameEditor
                     if (_controlledScaleLabel != null)
                     {
                         _controlledScaleLabel.Text = $"Controlled Scale: {value:F0}";
-                        _controlledScaleLabel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y); 
                     }
                     Console.WriteLine($"Controlled Scale Value: {value}");
+                    _isDirty = true; // UI state changed
                 };
 
                 // Horizontal ScaleWidget with Children
@@ -363,7 +373,10 @@ namespace GameEditor
 
                 _scaleWithChildrenHorizontal.AddChild(_childLabelForHorizontalScale);
                 _scaleWithChildrenHorizontal.AddChild(_childButtonForHorizontalScale);
-                _scaleWithChildrenHorizontal.OnValueChanged += (value) => Console.WriteLine($"Horizontal Scale w/ Children Value: {value}");
+                _scaleWithChildrenHorizontal.OnValueChanged += (value) => {
+                    Console.WriteLine($"Horizontal Scale w/ Children Value: {value}");
+                    _isDirty = true; // UI state changed
+                };
 
                 // Vertical ScaleWidget with Children
                 _scaleWithChildrenVertical = new ScaleWidget(
@@ -404,7 +417,10 @@ namespace GameEditor
                 _childPanelForVerticalScale.AddChild(_childLabelInPanelForVerticalScale); // Add label to panel
 
                 _scaleWithChildrenVertical.AddChild(_childPanelForVerticalScale); // Add panel to scale widget
-                _scaleWithChildrenVertical.OnValueChanged += (value) => Console.WriteLine($"Vertical Scale w/ Children Value: {value}");
+                _scaleWithChildrenVertical.OnValueChanged += (value) => {
+                    Console.WriteLine($"Vertical Scale w/ Children Value: {value}");
+                    _isDirty = true; // UI state changed
+                };
 
                 // ScaleWidget with a Button that scales
                 _scaleWithButton = new ScaleWidget(
@@ -442,6 +458,7 @@ namespace GameEditor
                     {
                         Console.WriteLine($"ScaleWithButton Value: {scaleValue}, Button Width: {_scalableButton.WidgetWidth}, Height: {_scalableButton.WidgetHeight}");
                     }
+                    _isDirty = true; // UI state changed (button scale might change)
                 };
 
                 _userInterface.AddWidget(_helloWorldLabel);
@@ -493,32 +510,69 @@ namespace GameEditor
             _profiler.Start("FPSLabelUpdate");
             if (_fpsLabel != null)
             {
-                _fpsLabel.Text = $"FPS: {1f / e.Time:F0}";
-                // Update the label's position after its text (and thus width) has changed.
-                _fpsLabel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y);
+                string newFpsText = $"FPS: {1f / e.Time:F0}";
+                if (_fpsLabel.Text != newFpsText)
+                {
+                    _fpsLabel.Text = newFpsText;
+                    _isDirty = true; // FPS text changed, mark UI as dirty
+                }
             }
             _profiler.Stop("FPSLabelUpdate");
 
-            _profiler.Start("ProfilerUpdate");
-            string profilerTitle = "Profiler (ms):";
-            if (_logProfilerToConsole)
+            _timeSinceLastProfilerUpdate += e.Time;
+            if (_timeSinceLastProfilerUpdate >= _profilerUpdateInterval)
             {
-                Console.Clear(); // Clear console for fresh output
-                Console.WriteLine(_profiler.GetFormattedOutput(profilerTitle, true));
+                _profiler.Start("ProfilerUpdateLoopContent");
+                string profilerTitle = "Profiler (ms):";
+                if (_logProfilerToConsole)
+                {
+                    Console.Clear(); // Clear console for fresh output
+                    Console.WriteLine(_profiler.GetFormattedOutput(profilerTitle, true));
+                }
+
+                if (_profilerPanel != null && _profilerLabel != null) 
+                {
+                    string newProfilerText = _profiler.GetFormattedOutput(profilerTitle, false);
+                    if (_profilerLabel.Text != newProfilerText)
+                    {
+                        _profilerLabel.Text = newProfilerText;
+                        _isDirty = true; // Profiler text changed, mark UI as dirty
+                    }
+                }
+                _profiler.Stop("ProfilerUpdateLoopContent");
+                _timeSinceLastProfilerUpdate = 0.0; // Reset timer
             }
 
-            if (_profilerPanel != null && _profilerLabel != null) // Ensure panel and label exist
+            bool hasActiveEffects = false;
+            if (!_isDirty) // Optimization: only check effects if not already dirty from other sources
             {
-                _profilerLabel.Text = _profiler.GetFormattedOutput(profilerTitle, false);
-                _profilerPanel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y); // Update panel first
-                _profilerLabel.UpdateActualPosition(_profilerPanel.ActualX, _profilerPanel.ActualY, _profilerPanel.WidgetWidth, _profilerPanel.WidgetHeight); // Then child label relative to panel
+                _profiler.Start("CheckActiveEffects");
+                foreach (var widget in _userInterface.GetWidgets())
+                {
+                    if (widget is LabelWidget label && label.IsVisible && label.CurrentTextEffect != TextEffect.None)
+                    {
+                        hasActiveEffects = true;
+                        break;
+                    }
+                }
+                _profiler.Stop("CheckActiveEffects");
             }
-            _profiler.Stop("ProfilerUpdate");
 
-            // Pass accumulated time and projection matrix to UserInterface.Draw
-            _profiler.Start("UIDraw");
-            _userInterface.Draw((float)_totalElapsedTime, _projectionMatrix);
-            _profiler.Stop("UIDraw");
+            if (_isDirty || hasActiveEffects)
+            {
+                if (_isDirty) // Only update all positions if a "structural" change occurred
+                {
+                    _profiler.Start("UpdateAllWidgetPositions");
+                    UpdateAllWidgetPositions();
+                    _profiler.Stop("UpdateAllWidgetPositions");
+                }
+
+                _profiler.Start("UIDraw");
+                _userInterface.Draw((float)_totalElapsedTime, _projectionMatrix);
+                _profiler.Stop("UIDraw");
+
+                _isDirty = false; // Reset the dirty flag after updates and drawing
+            }
 
             _profiler.Start("SwapBuffers");
             SwapBuffers();
@@ -534,7 +588,6 @@ namespace GameEditor
             {
                 Close();
             }
-            // Potentially update widget states or handle input for UI elements here
             _profiler.Start("UIUpdate");
             _userInterface.Update((float)e.Time); // Assuming UserInterface has an Update method
             _profiler.Stop("UIUpdate");
@@ -546,29 +599,28 @@ namespace GameEditor
             base.OnResize(e);
             GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
 
-            // Update the projection matrix for the window
             _projectionMatrix = Matrix4.CreateOrthographicOffCenter(0, ClientSize.X, ClientSize.Y, 0, -1f, 1f);
 
             FontRenderer.ScreenWidth = ClientSize.X;
             FontRenderer.ScreenHeight = ClientSize.Y;
-            FontRenderer.UpdateProjectionMatrix(); // Update FontRenderer's internal matrix
+            FontRenderer.UpdateProjectionMatrix();
 
-            // Update positions of all widgets on resize
-            UpdateAllWidgetPositions();
+            _isDirty = true; // Mark UI as dirty on resize
         }
 
         protected override void OnMouseDown(MouseButtonEventArgs e)
         {
+            _profiler.Start("OnMouseDown");
             base.OnMouseDown(e);
-            // Pass mouse events to the UserInterface to handle widget interactions
+            _profiler.Start("UserInterface.HandleMouseDown");
             _userInterface.HandleMouseDown(MouseState.X, MouseState.Y, e.Button);
+            _profiler.Stop("UserInterface.HandleMouseDown");
+            _profiler.Stop("OnMouseDown");
         }
 
         protected override void OnUnload()
         {
             FontRenderer.Dispose();
-            // If ButtonWidget had its own static GL resources that need cleanup, do it here.
-            // For now, assuming FontRenderer.Dispose() covers shared font atlas, and ButtonWidget uses that.
             base.OnUnload();
         }
     }
