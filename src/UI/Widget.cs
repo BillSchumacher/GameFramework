@@ -24,8 +24,8 @@ namespace GameFramework.UI
         public int OffsetY { get; set; }
 
         // Dimensions of the widget, to be set by derived classes or after content is known
-        public virtual int WidgetWidth { get; protected set; }
-        public virtual int WidgetHeight { get; protected set; }
+        public virtual int WidgetWidth { get; set; }
+        public virtual int WidgetHeight { get; set; }
 
         // Parameterless constructor for JSON deserialization
         public Widget() : this("default_widget_id", 0, 0)

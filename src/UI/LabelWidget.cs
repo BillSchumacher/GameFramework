@@ -126,7 +126,7 @@ namespace GameFramework.UI
                 // Assumes FontRenderer is already initialized with the correct font (matching this.FontName, this.FontSize)
                 return (int)FontRenderer.GetTextWidth(Text);
             }
-            protected set { /* Setter is required for override but not used directly */ }
+            set { /* Setter is required for override but not used directly */ }
         }
 
         /// <summary>
@@ -141,7 +141,7 @@ namespace GameFramework.UI
                 // Assumes FontRenderer is already initialized with the correct font (matching this.FontName, this.FontSize)
                 return (int)FontRenderer.GetTextHeight(); // Uses current font for general line height
             }
-            protected set { /* Setter is required for override but not used directly */ }
+            set { /* Setter is required for override but not used directly */ }
         }
 
         /// <summary>

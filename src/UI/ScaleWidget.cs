@@ -1,6 +1,8 @@
 using System;
 using System.Text.Json.Serialization;
 using OpenTK.Mathematics; // Assuming Vector2 for MinValue, MaxValue, CurrentValue if needed for float values
+using System.Collections.Generic; // Added for List
+using System.Linq; // Added for Linq
 
 namespace GameFramework.UI
 {
@@ -13,6 +15,8 @@ namespace GameFramework.UI
         private float _maxValue;
         private float _currentValue;
         private Orientation _orientation;
+        private List<Widget> _children = new List<Widget>();
+        private Dictionary<Widget, (int originalWidth, int originalHeight)> _originalChildDimensions = new Dictionary<Widget, (int, int)>();
 
         /// <summary>
         /// Gets or sets the minimum value of the scale.
@@ -57,6 +61,7 @@ namespace GameFramework.UI
             set
             {
                 _currentValue = Math.Clamp(value, _minValue, _maxValue);
+                ApplyScaleToChildren();
                 OnValueChanged?.Invoke(_currentValue);
             }
         }
@@ -115,46 +120,110 @@ namespace GameFramework.UI
             WidgetHeight = height;
         }
 
+        public void AddChild(Widget child)
+        {
+            if (!_children.Contains(child))
+            {
+                _children.Add(child);
+                _originalChildDimensions[child] = (child.WidgetWidth, child.WidgetHeight);
+                ApplyScaleToChild(child);
+            }
+        }
+
+        public void RemoveChild(Widget child)
+        {
+            if (_children.Remove(child))
+            {
+                _originalChildDimensions.Remove(child);
+            }
+        }
+
+        private void ApplyScaleToChildren()
+        {
+            foreach (var child in _children)
+            {
+                ApplyScaleToChild(child);
+            }
+        }
+
+        private void ApplyScaleToChild(Widget child)
+        {
+            if (_originalChildDimensions.TryGetValue(child, out var originalDimensions))
+            {
+                float scaleFactor = 0;
+                if (MaxValue - MinValue != 0)
+                {
+                    scaleFactor = (CurrentValue - MinValue) / (MaxValue - MinValue);
+                }
+                else if (MinValue == MaxValue && MaxValue != 0)
+                {
+                    scaleFactor = CurrentValue == MinValue ? 1.0f : 0f;
+                }
+                scaleFactor = Math.Max(0, scaleFactor);
+
+                child.WidgetWidth = (int)(originalDimensions.originalWidth * scaleFactor);
+                child.WidgetHeight = (int)(originalDimensions.originalHeight * scaleFactor);
+                child.UpdateActualPosition(this.WidgetWidth, this.WidgetHeight);
+            }
+        }
+
+        public override void UpdateActualPosition(int parentWidth, int parentHeight)
+        {
+            base.UpdateActualPosition(parentWidth, parentHeight);
+            foreach (var child in _children)
+            {
+                child.UpdateActualPosition(this.WidgetWidth, this.WidgetHeight);
+            }
+        }
+
         public override void Draw()
         {
             base.Draw();
             if (!IsVisible) return;
 
-            // Placeholder for actual drawing logic
-            // This would involve drawing the scale track and the thumb (handle)
-            // For example:
-            // DrawTrack();
-            // DrawThumb();
-            // Console.WriteLine($"Drawing ScaleWidget: {Id} at ({X}, {Y}) with value {CurrentValue}");
+            foreach (var child in _children)
+            {
+                if (child.IsVisible)
+                {
+                    child.Draw();
+                }
+            }
         }
 
-        // Placeholder for interaction logic (e.g., OnMouseDown to drag the thumb)
         public override bool OnMouseDown(float mouseX, float mouseY, OpenTK.Windowing.GraphicsLibraryFramework.MouseButton button)
         {
             if (!IsVisible) return false;
 
-            // Basic interaction: if clicked, set value based on click position (simplified)
-            // This is a very simplified example and would need proper hit detection and value calculation
-            // based on orientation and click position relative to the widget's bounds.
+            bool selfInteracted = false;
             if (IsMouseOver(mouseX, mouseY))
             {
                 float newValue;
                 if (Orientation == Orientation.Horizontal)
                 {
-                    float relativeX = mouseX - X;
+                    float relativeX = mouseX - this.X;
                     newValue = MinValue + (relativeX / WidgetWidth) * (MaxValue - MinValue);
                 }
-                else // Vertical
+                else
                 {
-                    float relativeY = mouseY - Y;
+                    float relativeY = mouseY - this.Y;
                     newValue = MinValue + (relativeY / WidgetHeight) * (MaxValue - MinValue);
                 }
                 CurrentValue = newValue;
-                return true; // Event handled
+                selfInteracted = true;
             }
-            return false; // Event not handled
+
+            for (int i = _children.Count - 1; i >= 0; i--)
+            {
+                var child = _children[i];
+                if (child.IsVisible && child.OnMouseDown(mouseX, mouseY, button))
+                {
+                    return true;
+                }
+            }
+
+            return selfInteracted;
         }
-        
+
         /// <summary>
         /// Helper method to check if mouse coordinates are over the widget.
         /// </summary>

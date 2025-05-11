@@ -27,6 +27,10 @@ namespace GameEditor
         private LabelWidget? _rainbowEffectLabel; // Added for character colors
         private LabelWidget? _fpsLabel;
         private ButtonWidget? _sampleButton; // Added for the button
+        private ScaleWidget? _horizontalScale;
+        private ScaleWidget? _verticalScale;
+        private ScaleWidget? _controlledScale;
+        private LabelWidget? _controlledScaleLabel;
         private double _totalElapsedTime = 0.0; // Field to accumulate total elapsed time
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
@@ -189,6 +193,77 @@ namespace GameEditor
 
                 _sampleButton.OnClick += () => {
                     Console.WriteLine("Button Clicked!");
+                    if (_controlledScale != null)
+                    {
+                        _controlledScale.CurrentValue += 10;
+                    }
+                };
+
+                // Horizontal ScaleWidget
+                _horizontalScale = new ScaleWidget(
+                    id: "horizontalScale",
+                    minValue: 0,
+                    maxValue: 100,
+                    initialValue: 25,
+                    orientation: GameFramework.UI.Orientation.Horizontal,
+                    x: 0, y: 0, // Anchored
+                    width: 200,
+                    height: 20,
+                    anchor: AnchorPoint.BottomLeft,
+                    offsetX: 10,
+                    offsetY: -80
+                );
+                _horizontalScale.OnValueChanged += (value) => Console.WriteLine($"Horizontal Scale Value: {value}");
+
+                // Vertical ScaleWidget
+                _verticalScale = new ScaleWidget(
+                    id: "verticalScale",
+                    minValue: -50,
+                    maxValue: 50,
+                    initialValue: 0,
+                    orientation: GameFramework.UI.Orientation.Vertical,
+                    x: 0, y: 0, // Anchored
+                    width: 20,
+                    height: 150,
+                    anchor: AnchorPoint.MiddleRight,
+                    offsetX: -50,
+                    offsetY: 0
+                );
+                _verticalScale.OnValueChanged += (value) => Console.WriteLine($"Vertical Scale Value: {value}");
+
+                // Controlled ScaleWidget and its Label
+                _controlledScaleLabel = new LabelWidget(
+                    id: "controlledScaleLabel",
+                    x: 0, y: 0, // Anchored
+                    text: "Controlled Scale: 50",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(1.0f, 1.0f, 1.0f),
+                    anchor: AnchorPoint.BottomLeft,
+                    offsetX: 10,
+                    offsetY: -140 // Position above the horizontal scale
+                );
+
+                _controlledScale = new ScaleWidget(
+                    id: "controlledScale",
+                    minValue: 0,
+                    maxValue: 200,
+                    initialValue: 50,
+                    orientation: GameFramework.UI.Orientation.Horizontal,
+                    x: 0, y: 0, // Anchored
+                    width: 200,
+                    height: 20,
+                    anchor: AnchorPoint.BottomLeft,
+                    offsetX: 10,
+                    offsetY: -110 // Position below the label, above horizontal scale
+                );
+                _controlledScale.OnValueChanged += (value) => {
+                    if (_controlledScaleLabel != null)
+                    {
+                        _controlledScaleLabel.Text = $"Controlled Scale: {value:F0}";
+                        _controlledScaleLabel.UpdateActualPosition(ClientSize.X, ClientSize.Y); // Update label due to potential text width change
+                    }
+                    Console.WriteLine($"Controlled Scale Value: {value}");
                 };
 
                 _userInterface.AddWidget(_helloWorldLabel);
@@ -199,6 +274,10 @@ namespace GameEditor
                 _userInterface.AddWidget(_rainbowEffectLabel); // Added new label to UI
                 _userInterface.AddWidget(_fpsLabel);
                 _userInterface.AddWidget(_sampleButton);
+                _userInterface.AddWidget(_horizontalScale);
+                _userInterface.AddWidget(_verticalScale);
+                _userInterface.AddWidget(_controlledScaleLabel);
+                _userInterface.AddWidget(_controlledScale);
 
                 // Update positions for all widgets after adding them
                 UpdateAllWidgetPositions();
