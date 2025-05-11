@@ -30,9 +30,9 @@
       <Pack>True</Pack>
       <PackagePath>\\</PackagePath>
     </None>
-    <None Update="src\\Shaders\\**\\*.glsl">
+    <Content Include="src\\Shaders\\**\\*.glsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    </Content>
   </ItemGroup>
 
 </Project>

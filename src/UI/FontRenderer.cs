@@ -6,9 +6,10 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
-using System.IO;
+using System.IO; // Keep this for File.Exists, etc.
 using System.Linq;
 using GameFramework.Rendering; // Added for ShaderHelper
+using System.Reflection; // Added for path resolution
 // System.Numerics.Vector2 and System.Numerics.PointF are used by SixLabors.Fonts
 // OpenTK.Mathematics.Vector2 is used for GL operations. Disambiguate where necessary.
 
@@ -63,6 +64,7 @@ namespace GameFramework.UI
 
         private static OpenTK.Mathematics.Vector3 _currentColor = OpenTK.Mathematics.Vector3.Zero; // Default to Black
         private static float _fontLineHeight = 0;
+        private static float _scaledAscender = 0f; // Added for Y-coordinate calculation
 
         /// <summary>Gets or sets the current screen width for projection matrix calculation.</summary>
         public static float ScreenWidth { get; set; } = 800f;
@@ -75,24 +77,94 @@ namespace GameFramework.UI
         /// </summary>
         /// <param name="ttfPath">The file path to the TrueType Font (.ttf) file.</param>
         /// <param name="fontSize">The desired font size in points.</param>
-        /// <param name="vertexShaderPath">Optional path to the vertex shader file.</param>
-        /// <param name="fragmentShaderPath">Optional path to the fragment shader file.</param>
+        /// <param name="vertexShaderFileName">Optional file name of the vertex shader (e.g., "ui_vertex.glsl"). Expected to be in a 'Shaders' subdirectory relative to the GameFramework assembly or build output.</param>
+        /// <param name="fragmentShaderFileName">Optional file name of the fragment shader (e.g., "ui_fragment_texture.glsl"). Expected to be in a 'Shaders' subdirectory relative to the GameFramework assembly or build output.</param>
         /// <exception cref="FileNotFoundException">Thrown if the TTF file or shader files are not found.</exception>
         /// <exception cref="Exception">Thrown if shader compilation or linking fails.</exception>
-        public static void Initialize(string ttfPath, float fontSize, string vertexShaderPath = "src/Shaders/ui_vertex.glsl", string fragmentShaderPath = "src/Shaders/ui_fragment_texture.glsl")
+        public static void Initialize(string ttfPath, float fontSize,
+                                      string vertexShaderFileName = "ui_vertex.glsl",
+                                      string fragmentShaderFileName = "ui_fragment_texture.glsl")
         {
             try
             {
-                _shaderProgram = ShaderHelper.CreateProgram(vertexShaderPath, fragmentShaderPath); // Corrected method name
+                string? assemblyDir = System.IO.Path.GetDirectoryName(typeof(FontRenderer).Assembly.Location);
+                if (string.IsNullOrEmpty(assemblyDir))
+                {
+                    assemblyDir = AppContext.BaseDirectory; // Fallback
+                }
+
+                // Define base directories to search for shaders
+                // GameFramework.csproj copies shaders to "src/Shaders/" relative to its output directory.
+                // AppContext.BaseDirectory is the execution directory of the consuming app (e.g., GameEditor/bin/Debug/net8.0)
+                var searchBaseDirs = new List<string>();
+                if (!string.IsNullOrEmpty(assemblyDir)) {
+                    searchBaseDirs.Add(assemblyDir);
+                }
+                searchBaseDirs.Add(AppContext.BaseDirectory); // Add execution directory of the app
+
+                // Define relative paths to the Shaders folder
+                string[] shaderRelativeFolders = {
+                    System.IO.Path.Combine("src", "Shaders"), // As per GameFramework.csproj
+                    "Shaders"                               // A common alternative
+                };
+
+                string? resolvedVertexShaderPath = null;
+                string? resolvedFragmentShaderPath = null;
+                List<string> attemptedVertexPaths = new List<string>();
+                List<string> attemptedFragmentPaths = new List<string>();
+
+                foreach (var baseDir in searchBaseDirs.Distinct().Where(d => !string.IsNullOrEmpty(d)))
+                {
+                    foreach (var relativeFolder in shaderRelativeFolders)
+                    {
+                        string potentialPath = System.IO.Path.Combine(baseDir!, relativeFolder, vertexShaderFileName);
+                        attemptedVertexPaths.Add(System.IO.Path.GetFullPath(potentialPath));
+                        if (File.Exists(potentialPath))
+                        {
+                            resolvedVertexShaderPath = potentialPath;
+                            break;
+                        }
+                    }
+                    if (resolvedVertexShaderPath != null) break;
+                }
+
+                foreach (var baseDir in searchBaseDirs.Distinct().Where(d => !string.IsNullOrEmpty(d)))
+                {
+                    foreach (var relativeFolder in shaderRelativeFolders)
+                    {
+                        string potentialPath = System.IO.Path.Combine(baseDir!, relativeFolder, fragmentShaderFileName);
+                        attemptedFragmentPaths.Add(System.IO.Path.GetFullPath(potentialPath));
+                        if (File.Exists(potentialPath))
+                        {
+                            resolvedFragmentShaderPath = potentialPath;
+                            break;
+                        }
+                    }
+                    if (resolvedFragmentShaderPath != null) break;
+                }
+
+                if (string.IsNullOrEmpty(resolvedVertexShaderPath))
+                {
+                    throw new FileNotFoundException($"Vertex shader '{vertexShaderFileName}' not found. Searched in paths derived from assembly and base directories:\n{string.Join("\n", attemptedVertexPaths.Distinct())}", vertexShaderFileName);
+                }
+                if (string.IsNullOrEmpty(resolvedFragmentShaderPath))
+                {
+                    throw new FileNotFoundException($"Fragment shader '{fragmentShaderFileName}' not found. Searched in paths derived from assembly and base directories:\n{string.Join("\n", attemptedFragmentPaths.Distinct())}", fragmentShaderFileName);
+                }
+
+                Console.WriteLine($"FontRenderer: Using vertex shader: {System.IO.Path.GetFullPath(resolvedVertexShaderPath)}");
+                Console.WriteLine($"FontRenderer: Using fragment shader: {System.IO.Path.GetFullPath(resolvedFragmentShaderPath)}");
+
+                _shaderProgram = ShaderHelper.CreateProgram(resolvedVertexShaderPath, resolvedFragmentShaderPath);
                 GL.UseProgram(_shaderProgram);
 
-                _projectionMatrixLocation = GL.GetUniformLocation(_shaderProgram, "projectionMatrix");
-                _modelMatrixLocation = GL.GetUniformLocation(_shaderProgram, "modelMatrix");
+                _projectionMatrixLocation = GL.GetUniformLocation(_shaderProgram, "projection"); // CORRECTED
+                _modelMatrixLocation = GL.GetUniformLocation(_shaderProgram, "model");          // CORRECTED
                 _textureSamplerLocation = GL.GetUniformLocation(_shaderProgram, "textureSampler");
                 _textColorLocation = GL.GetUniformLocation(_shaderProgram, "textColor");
 
                 GL.Uniform1(_textureSamplerLocation, 0); // Texture unit 0
-                SetColor(0,0,0); // Default to black
+                SetColor(0, 0, 0); // Default to black
 
                 _vao = GL.GenVertexArray();
                 _vbo = GL.GenBuffer();
@@ -115,13 +187,21 @@ namespace GameFramework.UI
 
                 if (string.IsNullOrEmpty(ttfPath) || !File.Exists(ttfPath))
                 {
-                    Console.WriteLine($"FontRenderer Error: TTF file not found at {ttfPath}");
-                    throw new FileNotFoundException("TTF file not found.", ttfPath);
+                    // The caller of Initialize is responsible for providing a valid, resolvable ttfPath.
+                    // If ttfPath is relative, it's relative to the *current working directory* of the process.
+                    string fullTtfPath = System.IO.Path.GetFullPath(ttfPath); // Resolve to full path for clarity in error
+                    Console.WriteLine($"FontRenderer Error: TTF file not found at the provided path: {fullTtfPath} (Original path: '{ttfPath}')");
+                    throw new FileNotFoundException($"TTF file not found. Path provided: '{ttfPath}', Resolved to: '{fullTtfPath}'", ttfPath);
                 }
 
                 FontCollection fontCollection = new FontCollection();
                 FontFamily fontFamily = fontCollection.Add(ttfPath);
                 Font font = fontFamily.CreateFont(fontSize, FontStyle.Regular);
+
+                // Calculate scaled ascender and line height
+                var fontMetrics = font.FontMetrics;
+                _scaledAscender = (fontMetrics.VerticalMetrics.Ascender / (float)fontMetrics.UnitsPerEm) * font.Size;
+                _fontLineHeight = ((fontMetrics.VerticalMetrics.Ascender - fontMetrics.VerticalMetrics.Descender + fontMetrics.VerticalMetrics.LineGap) / (float)fontMetrics.UnitsPerEm) * font.Size;
 
                 const string charSet = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
                 _characterMetrics.Clear();
@@ -144,9 +224,9 @@ namespace GameFramework.UI
                     };
 
                     // Corrected line height calculation using FontMetrics properties
-                    var fontMetrics = font.FontMetrics;
-                    _fontLineHeight = ((fontMetrics.VerticalMetrics.Ascender - fontMetrics.VerticalMetrics.Descender + fontMetrics.VerticalMetrics.LineGap) / (float)fontMetrics.UnitsPerEm) * font.Size;
-                    
+                    var fontMetricsForAtlas = font.FontMetrics;
+                    _fontLineHeight = ((fontMetricsForAtlas.VerticalMetrics.Ascender - fontMetricsForAtlas.VerticalMetrics.Descender + fontMetricsForAtlas.VerticalMetrics.LineGap) / (float)fontMetricsForAtlas.UnitsPerEm) * font.Size;
+
                     foreach (char c in charSet)
                     {
                         FontRectangle renderedBounds = TextMeasurer.MeasureBounds(c.ToString(), textOptions);
@@ -157,8 +237,12 @@ namespace GameFramework.UI
                         {
                             _characterMetrics[c] = new CharacterMetrics
                             {
-                                TexU = 0, TexV = 0, TexWidth = 0, TexHeight = 0,
-                                Width = 0, Height = 0,
+                                TexU = 0,
+                                TexV = 0,
+                                TexWidth = 0,
+                                TexHeight = 0,
+                                Width = 0,
+                                Height = 0,
                                 Bearing = System.Numerics.Vector2.Zero,
                                 Advance = (int)Math.Ceiling((double)advance)
                             };
@@ -179,8 +263,12 @@ namespace GameFramework.UI
                             float skippedAdvance = skippedAdvanceRect.Width;
                             _characterMetrics[c] = new CharacterMetrics
                             {
-                                TexU = 0, TexV = 0, TexWidth = 0, TexHeight = 0,
-                                Width = 0, Height = 0,
+                                TexU = 0,
+                                TexV = 0,
+                                TexWidth = 0,
+                                TexHeight = 0,
+                                Width = 0,
+                                Height = 0,
                                 Bearing = System.Numerics.Vector2.Zero,
                                 Advance = (int)Math.Ceiling((double)skippedAdvance)
                             };
@@ -189,8 +277,8 @@ namespace GameFramework.UI
 
                         // Configure drawing options and text options for SixLabors.ImageSharp.Drawing
                         DrawingOptions drawingOptions = new DrawingOptions();
-                        drawingOptions.GraphicsOptions.Antialias = true; 
-                        // textOptions is already defined: new TextOptions(font) { Dpi = dpi, KerningMode = KerningMode.None };
+                        drawingOptions.GraphicsOptions.Antialias = true;
+                        // textOptions is already defined: new TextOptions(font) { Dpi = dpi, KerningMode = None };
 
                         var brush = new SolidBrush(SixLabors.ImageSharp.Color.White);
                         var penLocation = new SixLabors.ImageSharp.PointF(currentX_atlas - renderedBounds.X, currentY_atlas - renderedBounds.Y);
@@ -201,7 +289,7 @@ namespace GameFramework.UI
                             brush,
                             penLocation
                         ));
-                        
+
                         _characterMetrics[c] = new CharacterMetrics
                         {
                             TexU = (float)currentX_atlas / atlasWidth,
@@ -220,8 +308,6 @@ namespace GameFramework.UI
                             maxRowHeight_atlas = (float)Math.Ceiling((double)renderedBounds.Height);
                         }
                     }
-                    
-                    // atlasImage.SaveAsPng("debug_font_atlas.png"); // Uncomment to debug atlas
 
                     FontTextureID = GL.GenTexture();
                     GL.BindTexture(TextureTarget.Texture2D, FontTextureID);
@@ -238,8 +324,12 @@ namespace GameFramework.UI
                     GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
                     GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
                     GL.BindTexture(TextureTarget.Texture2D, 0);
-
                 }
+
+                // Enable blending for transparency
+                GL.Enable(EnableCap.Blend);
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+                GL.Disable(EnableCap.DepthTest); // Explicitly disable depth test for UI
 
                 Console.WriteLine($"FontRenderer initialized with font {font.Name}. Atlas generated. Texture ID: {FontTextureID}");
             }
@@ -247,7 +337,7 @@ namespace GameFramework.UI
             {
                 Console.WriteLine($"FontRenderer Initialization Error: {ex.Message}\n{ex.StackTrace}");
                 // Clean up partial initialization if possible
-                Dispose(); 
+                Dispose();
                 throw; // Re-throw to signal failure
             }
         }
@@ -321,23 +411,25 @@ namespace GameFramework.UI
                 }
 
                 // Position of the quad on screen
+                // Adjust ypos calculation: startY is top of text line, baseline is startY + ascender.
+                // metrics.Bearing.Y is offset from baseline to glyph top (usually negative for ascenders).
+                float baselineY = startY + _scaledAscender;
                 float xpos = startX + currentPenX + metrics.Bearing.X;
-                float ypos = startY + metrics.Bearing.Y; // Bearing.Y is often negative or zero (distance from baseline to top of glyph)
-                                                        // For top-left origin, this means ypos is where the top of the glyph should be.
+                float ypos = baselineY + metrics.Bearing.Y;
 
                 float w = metrics.Width;
                 float h = metrics.Height;
 
                 // Vertex data for this character's quad
                 // x, y, u, v
-                _quadVertices[0] = xpos;     _quadVertices[1] = ypos + h; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV + metrics.TexHeight; // Bottom-Left
-                _quadVertices[4] = xpos;     _quadVertices[5] = ypos;     _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV;                 // Top-Left
-                _quadVertices[8] = xpos + w; _quadVertices[9] = ypos;     _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV; // Top-Right
+                _quadVertices[0] = xpos; _quadVertices[1] = ypos + h; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV + metrics.TexHeight; // Bottom-Left
+                _quadVertices[4] = xpos; _quadVertices[5] = ypos; _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV;                 // Top-Left
+                _quadVertices[8] = xpos + w; _quadVertices[9] = ypos; _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV; // Top-Right
 
-                _quadVertices[12] = xpos;     _quadVertices[13] = ypos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight; // Bottom-Left
-                _quadVertices[16] = xpos + w; _quadVertices[17] = ypos;     _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV; // Top-Right
+                _quadVertices[12] = xpos; _quadVertices[13] = ypos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight; // Bottom-Left
+                _quadVertices[16] = xpos + w; _quadVertices[17] = ypos; _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV; // Top-Right
                 _quadVertices[20] = xpos + w; _quadVertices[21] = ypos + h; _quadVertices[22] = metrics.TexU + metrics.TexWidth; _quadVertices[23] = metrics.TexV + metrics.TexHeight; // Bottom-Right
-                
+
                 // Model matrix is identity for text rendering if vertices are already in screen space
                 Matrix4 modelMatrix = Matrix4.Identity;
                 GL.UniformMatrix4(_modelMatrixLocation, false, ref modelMatrix);
@@ -387,12 +479,12 @@ namespace GameFramework.UI
             // This could be based on the tallest character in the atlas, or a fixed value from font metrics.
             // Using _fontLineHeight which should be set during Initialize from FontMetrics.
             if (_fontLineHeight > 0) return _fontLineHeight;
-            
+
             // Fallback if _fontLineHeight wasn't set: find max char height in current set (less accurate for line spacing)
             float maxHeight = 0;
             if (_characterMetrics.Count > 0)
             {
-                foreach(var metrics in _characterMetrics.Values)
+                foreach (var metrics in _characterMetrics.Values)
                 {
                     if (metrics.Height > maxHeight) maxHeight = metrics.Height;
                 }
@@ -423,6 +515,11 @@ namespace GameFramework.UI
                 GL.DeleteProgram(_shaderProgram); _shaderProgram = -1;
             }
             _characterMetrics.Clear();
+
+            // Disable blending if it was enabled by this renderer
+            GL.Disable(EnableCap.Blend);
+            GL.Enable(EnableCap.DepthTest); // Restore depth test state
+
             Console.WriteLine("FontRenderer disposed.");
         }
     }

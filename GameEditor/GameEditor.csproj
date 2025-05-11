@@ -15,4 +15,10 @@
     <ProjectReference Include="..\GameFramework.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Assets\arial.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

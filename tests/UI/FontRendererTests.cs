@@ -1,7 +1,11 @@
 using Xunit;
 using GameFramework.UI;
 using System.IO;
-using OpenTK.Mathematics; // Required for Vector3 if used, though FontRenderer API uses floats for color
+using OpenTK.Mathematics;
+using OpenTK.Windowing.Desktop; // Added for NativeWindow
+using OpenTK.Windowing.Common;   // Added for VSyncMode, ContextFlags
+using OpenTK.Graphics.OpenGL4;   // Added for GL related operations if needed directly in helper
+using System.Reflection; // Added for testing internal state
 
 namespace GameFramework.Tests.UI
 {
@@ -9,95 +13,146 @@ namespace GameFramework.Tests.UI
     {
         private const string TestFontPath = "TestAssets/arial.ttf"; // Relative to execution
         private const float TestFontSize = 16f;
+        private static bool _isInitialized = false;
+        private static object _initLock = new object();
 
         public FontRendererTests()
         {
-            // Ensure the TestAssets directory exists (it should be copied by the build process)
-            // Directory.CreateDirectory("TestAssets"); // This might not be needed if csproj handles it
-
-            // Minimal OpenGL context setup is tricky in unit tests without a window.
-            // FontRenderer.Initialize creates OpenGL resources.
-            // For robust testing, this would require a headless GL context or mocking.
-            // Here, we rely on Initialize to handle errors gracefully if GL context is unavailable.
-            try
+            lock (_initLock) // Ensure thread-safe initialization for parallel tests
             {
-                 // Attempt to initialize with a dummy GL context or expect it to handle no context
-                GameWindowlessHelper.EnsureInitialized(); // Helper to setup minimal GL if possible
-                // Ensure the font file exists before attempting to initialize
-                if (!File.Exists(TestFontPath))
+                if (!_isInitialized)
                 {
-                    throw new FileNotFoundException($"Test font file not found at {Path.GetFullPath(TestFontPath)}. Ensure it is copied to the output directory via GameFramework.Tests.csproj.");
+                    try
+                    {
+                        GameWindowlessHelper.EnsureInitialized();
+                        if (!File.Exists(TestFontPath))
+                        {
+                            throw new FileNotFoundException($"Test font file not found at {Path.GetFullPath(TestFontPath)}. Ensure it is copied to the output directory via GameFramework.Tests.csproj.");
+                        }
+                        FontRenderer.Initialize(TestFontPath, TestFontSize);
+                        FontRenderer.ScreenWidth = 800; // Set default screen size for tests
+                        FontRenderer.ScreenHeight = 600;
+                        FontRenderer.UpdateProjectionMatrix();
+                        _isInitialized = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Test constructor FontRenderer.Initialize failed: {ex.Message}. Some tests might not run as expected.");
+                        // Allow tests to proceed; they should fail if FontRenderer is not usable.
+                    }
                 }
-                FontRenderer.Initialize(TestFontPath, TestFontSize);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Test constructor FontRenderer.Initialize failed: {ex.Message}. Some tests might not run as expected.");
-                // This is expected if no GL context is available or font is missing.
-                // Rethrow or handle as appropriate for your test strategy.
-                // For now, we let tests proceed, and they might fail if FontRenderer is not initialized.
             }
         }
 
         public void Dispose()
         {
-            try
-            {
-                FontRenderer.Dispose();
-            }
-            catch (Exception ex)
-            {
-                 Console.WriteLine($"Test Dispose FontRenderer.Dispose failed: {ex.Message}.");
-            }
-            GameWindowlessHelper.CleanUp();
+            // No per-test disposal needed if FontRenderer is static and initialized once
+            // GameWindowlessHelper.CleanUp(); // This would be called globally after all tests
         }
 
         [Fact]
         public void Initialize_WithFont_PopulatesMetricsAndTexture()
         {
-            // This test assumes Initialize was called in constructor and succeeded.
-            // A real font is needed for these to be truly meaningful.
+            Assert.True(_isInitialized, "FontRenderer should be initialized.");
             Assert.True(FontRenderer.FontTextureID > 0, "FontTextureID should be greater than 0 after initialization.");
-            // CharacterMetrics count depends on the actual font and charset used in FontRenderer
-            // For now, check if it's not empty, assuming '?' or some chars got loaded.
-            // Assert.NotEmpty(FontRenderer._characterMetrics); // Cannot access private member, need a public way or different assertion
             Assert.True(FontRenderer.GetTextHeight() > 0, "Font line height should be greater than 0.");
         }
 
         [Fact]
         public void GetTextWidth_WithValidText_ReturnsNonZeroForRealFont()
         {
+            Assert.True(_isInitialized, "FontRenderer should be initialized for GetTextWidth.");
             float width = FontRenderer.GetTextWidth("Hello");
             Assert.True(width > 0, "Text width for 'Hello' should be positive.");
         }
 
         [Fact]
+        public void GetTextWidth_EmptyString_ReturnsZero()
+        {
+            Assert.True(_isInitialized, "FontRenderer should be initialized for GetTextWidth (empty string).");
+            float width = FontRenderer.GetTextWidth("");
+            Assert.Equal(0, width);
+        }
+
+        [Fact]
+        public void GetTextWidth_Spaces_ReturnsWidth()
+        {
+            Assert.True(_isInitialized, "FontRenderer should be initialized for GetTextWidth (spaces).");
+            float spaceWidth = FontRenderer.GetTextWidth(" ");
+            Assert.True(spaceWidth > 0, "Width of a single space should be greater than 0.");
+            float spacesWidth = FontRenderer.GetTextWidth("   ");
+            Assert.True(spacesWidth > spaceWidth, "Width of multiple spaces should be greater than a single space.");
+            // Approximate check, assuming advance of space is consistent
+            Assert.InRange(spacesWidth, spaceWidth * 2.9f, spaceWidth * 3.1f); 
+        }
+
+        [Fact]
+        public void GetTextWidth_KnownString_ReturnsApproximateWidth()
+        {
+            Assert.True(_isInitialized, "FontRenderer should be initialized for GetTextWidth (known string).");
+            // This is highly dependent on the font and size. 
+            // For Arial 16pt, "Test" is roughly 30-40 pixels wide.
+            // This is a sanity check, not a precise measurement.
+            float width = FontRenderer.GetTextWidth("Test");
+            Assert.InRange(width, 25f, 55f); // Adjusted range based on typical Arial 16px rendering
+        }
+
+
+        [Fact]
         public void GetTextHeight_ReturnsNonZeroForRealFont()
         {
+            Assert.True(_isInitialized, "FontRenderer should be initialized for GetTextHeight.");
             float height = FontRenderer.GetTextHeight();
             Assert.True(height > 0, "Text height should be positive.");
         }
 
         [Fact]
-        public void SetColor_UpdatesColorCorrectly()
+        public void GetTextHeight_IsConsistent()
         {
-            // This test doesn't directly verify rendering but checks if the color is set.
-            // We can't access the private _currentColor field directly for assertion.
-            // We assume that if GL.Uniform3 is called without error, it's working.
-            // A more robust test would involve checking shader uniform values if possible.
-            FontRenderer.SetColor(0.5f, 0.6f, 0.7f);
-            // No direct assertion possible here without accessing private state or GL state.
-            // If running in a GL context, one could try to read back the uniform, but that's complex.
-            Assert.True(true, "SetColor called. Assumed to work if no GL errors (not checked here).");
+            Assert.True(_isInitialized, "FontRenderer should be initialized for GetTextHeight (consistent).");
+            float height1 = FontRenderer.GetTextHeight();
+            float height2 = FontRenderer.GetTextHeight();
+            Assert.Equal(height1, height2);
+            Assert.InRange(height1, 10f, 30f); // Sanity check for Arial 16px
         }
+
+        [Fact]
+        public void SetColor_UpdatesInternalColorField()
+        {
+            Assert.True(_isInitialized, "FontRenderer should be initialized for SetColor.");
+            var expectedColor = new OpenTK.Mathematics.Vector3(0.1f, 0.2f, 0.3f);
+            FontRenderer.SetColor(expectedColor.X, expectedColor.Y, expectedColor.Z);
+
+            // Use reflection to check the internal static field _currentColor
+            FieldInfo? colorField = typeof(FontRenderer).GetField("_currentColor", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(colorField); 
+            
+            object? fieldValue = colorField.GetValue(null);
+            Assert.IsType<OpenTK.Mathematics.Vector3>(fieldValue);
+            var actualColor = (OpenTK.Mathematics.Vector3)fieldValue;
+            
+            Assert.Equal(expectedColor, actualColor);
+        }
+
+        [Fact]
+        public void DrawText_NullOrEmptyString_DoesNotThrow()
+        {
+            Assert.True(_isInitialized, "FontRenderer should be initialized for DrawText (null/empty).");
+            Exception? ex = Record.Exception(() => FontRenderer.DrawText(null, 0, 0));
+            Assert.Null(ex);
+            ex = Record.Exception(() => FontRenderer.DrawText("", 0, 0));
+            Assert.Null(ex);
+        }
+
+        // It's difficult to test DrawText output without visual inspection or framebuffer sampling in a unit test.
+        // We assume if Initialize, GetTextWidth, GetTextHeight, and SetColor work, DrawText is likely functional.
+
     }
 
-    // Minimal helper to attempt to create a headless context for tests
-    // This is a simplified version and might not work in all test environments.
-    // For proper headless GL, a library like OpenTK.Windowing.Desktop.NativeWindow might be needed.
     static class GameWindowlessHelper
     {
-        private static OpenTK.Windowing.Desktop.INativeWindow? _nativeWindow;
+        private static INativeWindow? _nativeWindow;
+        private static IGraphicsContext? _context;
 
         public static void EnsureInitialized()
         {
@@ -105,20 +160,29 @@ namespace GameFramework.Tests.UI
             {
                 try
                 {
-                    // Try to create a minimal windowless context
-                    // Note: This is often the most challenging part of GL unit testing.
-                    // OpenTK 4.x recommends GameWindow for context creation.
-                    // A truly "windowless" setup for tests can be involved.
-                    // This is a placeholder for where such initialization would go.
-                    // For now, we'll assume FontRenderer might handle cases where context is not fully available.
-                    // _nativeWindow = new OpenTK.Windowing.Desktop.NativeWindow(new OpenTK.Windowing.Desktop.NativeWindowSettings { Size = new OpenTK.Mathematics.Vector2i(1,1), IsVisible = false });
-                    // If the above line is used, OpenTK.Windowing.Desktop package would be needed.
-                    // And it would still require a display server on Linux, etc.
-                    Console.WriteLine("GameWindowlessHelper: Skipping actual GL context creation for tests. FontRenderer might operate in a limited mode or fail gracefully.");
+                    var nativeWindowSettings = new NativeWindowSettings()
+                    {
+                        Size = new Vector2i(1, 1),
+                        Title = "TestWindow - Headless",
+                        Flags = ContextFlags.Offscreen,
+                        APIVersion = new Version(3, 3),
+                        Profile = ContextProfile.Core,
+                        IsVisible = false
+                    };
+
+                    _nativeWindow = new NativeWindow(nativeWindowSettings);
+                    _context = _nativeWindow.Context;
+                    _context.MakeCurrent();
+
+                    Console.WriteLine("GameWindowlessHelper: Successfully created and made current an OpenGL context.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"GameWindowlessHelper: Failed to initialize a minimal GL context: {ex.Message}");
+                    Console.WriteLine($"GameWindowlessHelper: Failed to initialize an OpenGL context: {ex.Message}");
+                    _nativeWindow?.Dispose();
+                    _nativeWindow = null;
+                    _context = null;
+                    throw;
                 }
             }
         }
@@ -127,6 +191,8 @@ namespace GameFramework.Tests.UI
         {
             _nativeWindow?.Dispose();
             _nativeWindow = null;
+            _context = null;
+            Console.WriteLine("GameWindowlessHelper: Cleaned up OpenGL context.");
         }
     }
 }
