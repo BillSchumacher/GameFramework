@@ -1,5 +1,6 @@
 using OpenTK.Mathematics;
 using System.Text.Json.Serialization;
+using System.Collections.Generic; // Added for List<Vector3>
 
 namespace GameFramework.UI
 {
@@ -53,6 +54,12 @@ namespace GameFramework.UI
         public float EffectStrength { get; set; } = 5.0f;
 
         /// <summary>
+        /// Gets or sets the list of colors for individual characters. 
+        /// If null or if the count does not match the text length, the global TextColor is used.
+        /// </summary>
+        public List<Vector3>? CharacterColors { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="LabelWidget"/> class with default values.
         /// </summary>
         public LabelWidget() : this(
@@ -63,7 +70,8 @@ namespace GameFramework.UI
             16, // fontSize
             new Vector3(1.0f, 1.0f, 1.0f), // Default text color (white)
             AnchorPoint.Manual, 0, 0,
-            TextEffect.None, 1.0f, 5.0f // Default effect parameters
+            TextEffect.None, 1.0f, 5.0f, // Default effect parameters
+            null // characterColors
             )
         { }
 
@@ -83,8 +91,9 @@ namespace GameFramework.UI
         /// <param name="currentTextEffect">The visual effect applied to the text.</param>
         /// <param name="effectSpeed">The speed of the text effect.</param>
         /// <param name="effectStrength">The strength of the text effect.</param>
+        /// <param name="characterColors">The list of colors for individual characters.</param>
         [JsonConstructor]
-        public LabelWidget(string id, int x, int y, string text, string fontName, int fontSize, Vector3? textColor = null, AnchorPoint anchor = AnchorPoint.Manual, int offsetX = 0, int offsetY = 0, TextEffect currentTextEffect = TextEffect.None, float effectSpeed = 1.0f, float effectStrength = 5.0f)
+        public LabelWidget(string id, int x, int y, string text, string fontName, int fontSize, Vector3? textColor = null, AnchorPoint anchor = AnchorPoint.Manual, int offsetX = 0, int offsetY = 0, TextEffect currentTextEffect = TextEffect.None, float effectSpeed = 1.0f, float effectStrength = 5.0f, List<Vector3>? characterColors = null)
             : base(id, x, y, anchor, offsetX, offsetY)
         {
             Text = text; // Use property to ensure backing field is set
@@ -94,12 +103,13 @@ namespace GameFramework.UI
             CurrentTextEffect = currentTextEffect;
             EffectSpeed = effectSpeed;
             EffectStrength = effectStrength;
+            CharacterColors = characterColors;
         }
         
         // Simplified constructor for internal use, e.g., by ButtonWidget
         // Assumes X, Y will be determined by anchoring within a parent
-        public LabelWidget(string fontName, int fontSize, string text, Vector3? textColor = null, AnchorPoint anchor = AnchorPoint.MiddleCenter, float offsetX = 0, float offsetY = 0, string id = "generated_label_id", TextEffect currentTextEffect = TextEffect.None, float effectSpeed = 1.0f, float effectStrength = 5.0f)
-            : this(id, 0, 0, text, fontName, fontSize, textColor, anchor, (int)offsetX, (int)offsetY, currentTextEffect, effectSpeed, effectStrength)
+        public LabelWidget(string fontName, int fontSize, string text, Vector3? textColor = null, AnchorPoint anchor = AnchorPoint.MiddleCenter, float offsetX = 0, float offsetY = 0, string id = "generated_label_id", TextEffect currentTextEffect = TextEffect.None, float effectSpeed = 1.0f, float effectStrength = 5.0f, List<Vector3>? characterColors = null)
+            : this(id, 0, 0, text, fontName, fontSize, textColor, anchor, (int)offsetX, (int)offsetY, currentTextEffect, effectSpeed, effectStrength, characterColors)
         {
         }
 
@@ -157,8 +167,8 @@ namespace GameFramework.UI
             }
 
             // Assumes FontRenderer is already initialized with the correct font (matching this.FontName, this.FontSize)
-            FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z); // Set color before drawing
-            FontRenderer.DrawText(Text, parentAbsoluteX + X, parentAbsoluteY + Y, CurrentTextEffect, EffectStrength, EffectSpeed, elapsedTime);
+            FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z); // Set global color first
+            FontRenderer.DrawText(Text, parentAbsoluteX + X, parentAbsoluteY + Y, CurrentTextEffect, EffectStrength, EffectSpeed, elapsedTime, CharacterColors);
         }
     }
 }

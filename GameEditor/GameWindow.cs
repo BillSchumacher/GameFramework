@@ -8,6 +8,7 @@ using GameFramework.Rendering; // Added for ShaderHelper (if FontRenderer relies
 using System;
 using System.IO; // Added for Path.Combine and AppContext.BaseDirectory
 using GameFramework; // Added for UserInterface
+using System.Collections.Generic; // Added for List<Vector3>
 
 namespace GameEditor
 {
@@ -23,6 +24,7 @@ namespace GameEditor
         private LabelWidget? _randomBounceEffectLabel;
         private LabelWidget? _jitterEffectLabel;
         private LabelWidget? _typewriterEffectLabel;
+        private LabelWidget? _rainbowEffectLabel; // Added for character colors
         private LabelWidget? _fpsLabel;
         private ButtonWidget? _sampleButton; // Added for the button
         private double _totalElapsedTime = 0.0; // Field to accumulate total elapsed time
@@ -128,6 +130,38 @@ namespace GameEditor
                     effectStrength: 0.0f // Not used by Typewriter
                 );
 
+                // Rainbow Effect Label (per-character colors)
+                string rainbowText = "Rainbow!";
+                var rainbowCharColors = new List<Vector3>();
+                Vector3[] colors = new Vector3[]
+                {
+                    new Vector3(1.0f, 0.0f, 0.0f), // Red
+                    new Vector3(1.0f, 0.5f, 0.0f), // Orange
+                    new Vector3(1.0f, 1.0f, 0.0f), // Yellow
+                    new Vector3(0.0f, 1.0f, 0.0f), // Green
+                    new Vector3(0.0f, 0.5f, 1.0f), // Blue
+                    new Vector3(0.5f, 0.0f, 1.0f), // Indigo
+                    new Vector3(1.0f, 0.0f, 1.0f)  // Violet
+                };
+                for (int i = 0; i < rainbowText.Length; i++)
+                {
+                    rainbowCharColors.Add(colors[i % colors.Length]);
+                }
+
+                _rainbowEffectLabel = new LabelWidget(
+                    id: "rainbowLabel",
+                    x: 0, y: 0,
+                    text: rainbowText,
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(1.0f, 1.0f, 1.0f), // Fallback if CharacterColors is null/mismatched
+                    anchor: AnchorPoint.TopLeft,
+                    offsetX: 10,
+                    offsetY: 160, // Position below the typewriter label
+                    currentTextEffect: TextEffect.None, // Or any other effect combined with rainbow
+                    characterColors: rainbowCharColors
+                );
+
                 _fpsLabel = new LabelWidget(
                     id: "fpsLabel",
                     x: 0, y: 0,
@@ -162,6 +196,7 @@ namespace GameEditor
                 _userInterface.AddWidget(_randomBounceEffectLabel);
                 _userInterface.AddWidget(_jitterEffectLabel);
                 _userInterface.AddWidget(_typewriterEffectLabel);
+                _userInterface.AddWidget(_rainbowEffectLabel); // Added new label to UI
                 _userInterface.AddWidget(_fpsLabel);
                 _userInterface.AddWidget(_sampleButton);
 

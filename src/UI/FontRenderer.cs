@@ -11,6 +11,7 @@ using System.Linq;
 using GameFramework.Rendering; // Added for ShaderHelper
 using System.Reflection; // Added for path resolution
 using System; // Added for Math.Sin
+using System.Collections.Generic; // Added for List<Vector3>
 // System.Numerics.Vector2 and System.Numerics.PointF are used by SixLabors.Fonts
 // OpenTK.Mathematics.Vector2 is used for GL operations. Disambiguate where necessary.
 
@@ -377,19 +378,16 @@ namespace GameFramework.UI
 
         /// <summary>
         /// Draws the specified text string at the given screen coordinates (top-left origin).
-        /// This overload defaults to no text effect.
+        /// This overload defaults to no text effect and uses the globally set color.
         /// </summary>
-        /// <param name="text">The string to render.</param>
-        /// <param name="startX">The x-coordinate for the top-left of the text.</param>
-        /// <param name="startY">The y-coordinate for the top-left of the text.</param>
         public static void DrawText(string text, float startX, float startY)
         {
-            DrawText(text, startX, startY, TextEffect.None, 0f, 0f, 0f);
+            DrawText(text, startX, startY, TextEffect.None, 0f, 0f, 0f, null);
         }
 
         /// <summary>
         /// Draws the specified text string at the given screen coordinates (top-left origin),
-        /// optionally applying a text effect.
+        /// optionally applying a text effect and per-character colors.
         /// </summary>
         /// <param name="text">The string to render.</param>
         /// <param name="startX">The x-coordinate for the top-left of the text.</param>
@@ -398,7 +396,8 @@ namespace GameFramework.UI
         /// <param name="effectStrength">The strength of the effect (e.g., bounce height).</param>
         /// <param name="effectSpeed">The speed of the effect (e.g., bounce cycles per second).</param>
         /// <param name="elapsedTime">The total elapsed time, used for animation.</param>
-        public static void DrawText(string text, float startX, float startY, TextEffect effect, float effectStrength, float effectSpeed, float elapsedTime)
+        /// <param name="characterColors">Optional list of colors for each character. If null or count mismatch, uses globally set color.</param>
+        public static void DrawText(string text, float startX, float startY, TextEffect effect, float effectStrength, float effectSpeed, float elapsedTime, List<Vector3>? characterColors = null)
         {
             if (_shaderProgram == -1 || string.IsNullOrEmpty(text) || FontTextureID <= 0 || _characterMetrics.Count == 0)
             {
@@ -409,35 +408,40 @@ namespace GameFramework.UI
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, FontTextureID);
             GL.Uniform1(_textureSamplerLocation, 0);
-            GL.Uniform3(_textColorLocation, _currentColor);
             GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix);
 
             GL.BindVertexArray(_vao);
             GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo);
 
             float currentPenX = startX;
-            float charIndex = 0;
+            int currentCharacterIndex = 0; // Used for indexing characterColors
 
             string textToRender = text;
             if (effect == TextEffect.Typewriter)
             {
-                if (effectSpeed <= 0) effectSpeed = 10; // Default characters per second if speed is not set
+                if (effectSpeed <= 0) effectSpeed = 10; 
                 int charsToShow = (int)(elapsedTime * effectSpeed);
-                if (charsToShow <= 0) textToRender = ""; // Show nothing if no time has passed or charsToShow is zero
+                if (charsToShow <= 0) textToRender = "";
                 else if (charsToShow < text.Length)
                 {
                     textToRender = text.Substring(0, charsToShow);
                 }
-                // If charsToShow >= text.Length, textToRender remains the full text
             }
 
-            foreach (char c in textToRender) // Use textToRender here
+            bool useCustomCharColors = characterColors != null && characterColors.Count == textToRender.Length;
+            if (!useCustomCharColors)
+            {
+                GL.Uniform3(_textColorLocation, _currentColor); // Set global color once if not using per-char
+            }
+
+            foreach (char c in textToRender)
             {
                 if (!_characterMetrics.TryGetValue(c, out CharacterMetrics metrics))
                 {
                     if (!_characterMetrics.TryGetValue('?', out metrics))
                     {
                         currentPenX += GetTextWidth(" ") / 2;
+                        currentCharacterIndex++;
                         continue;
                     }
                 }
@@ -445,15 +449,21 @@ namespace GameFramework.UI
                 if (c == ' ')
                 {
                     currentPenX += metrics.Advance;
-                    charIndex++;
+                    currentCharacterIndex++;
                     continue;
                 }
 
                 if (metrics.Width == 0 || metrics.Height == 0)
                 {
                     currentPenX += metrics.Advance;
-                    charIndex++;
+                    currentCharacterIndex++;
                     continue;
+                }
+
+                if (useCustomCharColors)
+                {
+                    Vector3 charColor = characterColors![currentCharacterIndex]; // Null check is done by useCustomCharColors
+                    GL.Uniform3(_textColorLocation, charColor);
                 }
 
                 float xPos = currentPenX + metrics.Bearing.X;
@@ -463,11 +473,11 @@ namespace GameFramework.UI
 
                 if (effect == TextEffect.Bounce)
                 {
-                    yOffset = (float)Math.Sin((elapsedTime * effectSpeed * 2 * Math.PI) + (charIndex * 0.5f)) * effectStrength;
+                    yOffset = (float)Math.Sin((elapsedTime * effectSpeed * 2 * Math.PI) + (currentCharacterIndex * 0.5f)) * effectStrength;
                 }
                 else if (effect == TextEffect.RandomBounce)
                 {
-                    int charSeed = (int)charIndex * 12345;
+                    int charSeed = currentCharacterIndex * 12345;
                     Random charRandom = new Random(charSeed);
                     float charStrength = effectStrength * (0.5f + (float)charRandom.NextDouble() * 0.5f);
                     float charSpeedFactor = effectSpeed * (0.5f + (float)charRandom.NextDouble());
@@ -476,12 +486,9 @@ namespace GameFramework.UI
                 }
                 else if (effect == TextEffect.Jitter)
                 {
-                    // effectStrength controls max displacement. effectSpeed is not directly used here, jitter is per-frame.
-                    // Using the global _random for Jitter to make it less predictable per character over time
                     xOffset = ((float)_random.NextDouble() * 2f - 1f) * effectStrength;
                     yOffset = ((float)_random.NextDouble() * 2f - 1f) * effectStrength;
                 }
-                // Typewriter effect is handled by modifying textToRender, no specific per-character offset here unless combined.
 
                 xPos += xOffset;
                 yPos += yOffset;
@@ -503,7 +510,7 @@ namespace GameFramework.UI
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
                 currentPenX += metrics.Advance;
-                charIndex++;
+                currentCharacterIndex++;
             }
 
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
