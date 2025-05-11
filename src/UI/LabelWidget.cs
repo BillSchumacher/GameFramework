@@ -123,7 +123,7 @@ namespace GameFramework.UI
             {
                 if (string.IsNullOrEmpty(Text) || string.IsNullOrEmpty(FontName) || FontSize <= 0)
                     return 0;
-                // Assumes FontRenderer is already initialized with the correct font (matching this.FontName, this.FontSize)
+                FontRenderer.LoadAndSetFont(FontName, (float)FontSize); // Ensure FontRenderer uses this label's font settings
                 return (int)FontRenderer.GetTextWidth(Text);
             }
             set { /* Setter is required for override but not used directly */ }
@@ -138,7 +138,7 @@ namespace GameFramework.UI
             {
                 if (string.IsNullOrEmpty(FontName) || FontSize <= 0) // Text content doesn't determine general line height
                     return 0;
-                // Assumes FontRenderer is already initialized with the correct font (matching this.FontName, this.FontSize)
+                FontRenderer.LoadAndSetFont(FontName, (float)FontSize); // Ensure FontRenderer uses this label's font settings
                 return (int)FontRenderer.GetTextHeight(); // Uses current font for general line height
             }
             set { /* Setter is required for override but not used directly */ }
@@ -150,11 +150,12 @@ namespace GameFramework.UI
         /// </summary>
         public override void Draw(float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
         {
-            if (!IsVisible || string.IsNullOrEmpty(Text)) return;
+            if (!IsVisible || string.IsNullOrEmpty(Text) || string.IsNullOrEmpty(FontName) || FontSize <= 0) return;
 
             // A LabelWidget typically doesn't have its own background, so base.Draw(elapsedTime) is usually not called.
             // If a background were desired, it would be: base.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
 
+            FontRenderer.LoadAndSetFont(FontName, (float)FontSize); // Ensure FontRenderer uses this label's font settings
             // Set the color for the FontRenderer before drawing text
             FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z);
 
@@ -167,39 +168,6 @@ namespace GameFramework.UI
                 EffectSpeed, 
                 elapsedTime, 
                 CharacterColors 
-            );
-        }
-
-        /// <summary>
-        /// Draws the label on the screen at its relative X, Y offset by parent's absolute coordinates.
-        /// This overload might be redundant if UpdateActualPosition and the main Draw(elapsedTime) are used correctly.
-        /// </summary>
-        /// <param name="parentAbsoluteX">The absolute X coordinate of the parent container.</param>
-        /// <param name="parentAbsoluteY">The absolute Y coordinate of the parent container.</param>
-        /// <param name="elapsedTime">The elapsed time for animations.</param>
-        /// <param name="projectionMatrix">The projection matrix for rendering.</param>
-        public void Draw(int parentAbsoluteX, int parentAbsoluteY, float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
-        {
-            if (!IsVisible || string.IsNullOrEmpty(Text) || string.IsNullOrEmpty(FontName) || FontSize <= 0)
-            {
-                return;
-            }
-
-            float screenX = parentAbsoluteX + X;
-            float screenY = parentAbsoluteY + Y;
-
-            // Set the color for the FontRenderer before drawing text
-            FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z);
-
-            FontRenderer.DrawText(
-                Text, 
-                screenX,
-                screenY,
-                CurrentTextEffect,
-                EffectStrength,
-                EffectSpeed,
-                elapsedTime,
-                CharacterColors
             );
         }
     }

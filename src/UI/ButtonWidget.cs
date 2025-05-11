@@ -14,6 +14,9 @@ namespace GameFramework.UI
     {
         private string _text;
         private LabelWidget _label;
+        private int _originalFontSize;
+        private int _originalWidth;
+        private int _originalHeight;
 
         public string Text
         {
@@ -55,6 +58,11 @@ namespace GameFramework.UI
             int offsetY = 0)
             : base(id, 0, 0, anchor, offsetX, offsetY) 
         {
+            // Store original dimensions and font size
+            _originalWidth = width;
+            _originalHeight = height;
+            _originalFontSize = fontSize;
+
             WidgetWidth = width;   
             WidgetHeight = height; 
             _text = text ?? string.Empty;
@@ -84,31 +92,59 @@ namespace GameFramework.UI
             _label.Text = _text; 
         }
 
-        public override void UpdateActualPosition(float parentActualX, float parentActualY, float containerWidth, float containerHeight)
+        public override int WidgetWidth
         {
-            // Update button's own position
-            base.UpdateActualPosition(parentActualX, parentActualY, containerWidth, containerHeight);
-            Console.WriteLine($"[ButtonWidget {Id}] UpdateActualPosition: ActualX={ActualX}, ActualY={ActualY}, WidgetWidth={WidgetWidth}, WidgetHeight={WidgetHeight}, parentActualX={parentActualX}, parentActualY={parentActualY}, containerWidth={containerWidth}, containerHeight={containerHeight}"); // Debug
-
-            // Update label's position relative to this button
-            if (_label != null)
+            get => base.WidgetWidth;
+            set
             {
-                _label.UpdateActualPosition(this.ActualX, this.ActualY, this.WidgetWidth, this.WidgetHeight);
+                base.WidgetWidth = value;
+                // Font size scaling is now handled in Draw to ensure it happens just before rendering
             }
         }
+
+        public override int WidgetHeight
+        {
+            get => base.WidgetHeight;
+            set
+            {
+                base.WidgetHeight = value;
+                // Font size scaling is now handled in Draw
+            }
+        }
+
+        public override void UpdateActualPosition(float parentActualX, float parentActualY, float containerWidth, float containerHeight)
+        {
+            base.UpdateActualPosition(parentActualX, parentActualY, containerWidth, containerHeight);
+            // The label's position is updated in Draw, after potential font size changes affect its dimensions
+        }
         
-        public override void Draw(float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
+        public override void Draw(float elapsedTime, Matrix4 projectionMatrix)
         {
             if (!IsVisible) return;
 
-            // Draw button background using base class implementation
-            base.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
+            base.Draw(elapsedTime, projectionMatrix);
 
-            // Draw the label
             if (_label != null)
             {
+                if (_originalWidth > 0 && _originalFontSize > 0) // Ensure original dimensions are valid
+                {
+                    float scaleFactor = 1.0f;
+                    if (_originalWidth != 0) // Avoid division by zero if original width was 0
+                    {
+                        scaleFactor = (float)base.WidgetWidth / _originalWidth;
+                    }
+                    
+                    int newFontSize = (int)(_originalFontSize * scaleFactor);
+                    if (newFontSize <= 0) newFontSize = 1; // Prevent zero or negative font size
+
+                    if (_label.FontSize != newFontSize)
+                    {
+                        _label.FontSize = newFontSize;
+                    }
+                }
+                // Update label's position *after* font size might have changed, as this affects its own width/height for centering
                 _label.UpdateActualPosition(this.ActualX, this.ActualY, this.WidgetWidth, this.WidgetHeight);
-                _label.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
+                _label.Draw(elapsedTime, projectionMatrix);
             }
         }
 

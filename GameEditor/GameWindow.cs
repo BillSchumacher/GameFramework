@@ -40,6 +40,10 @@ namespace GameEditor
         private double _totalElapsedTime = 0.0; // Field to accumulate total elapsed time
         private Matrix4 _projectionMatrix; // Added to store the projection matrix
 
+        // New fields for the button scaling example
+        private ScaleWidget? _scaleWithButton;
+        private ButtonWidget? _scalableButton;
+
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
@@ -367,6 +371,44 @@ namespace GameEditor
                 _scaleWithChildrenVertical.AddChild(_childPanelForVerticalScale); // Add panel to scale widget
                 _scaleWithChildrenVertical.OnValueChanged += (value) => Console.WriteLine($"Vertical Scale w/ Children Value: {value}");
 
+                // ScaleWidget with a Button that scales
+                _scaleWithButton = new ScaleWidget(
+                    id: "scaleWithButton",
+                    minValue: 1.0f, // Min scale factor
+                    maxValue: 3.0f, // Max scale factor
+                    initialValue: 1.0f,
+                    orientation: GameFramework.UI.Orientation.Horizontal,
+                    x: 0, y: 0, // Anchored
+                    width: 200,
+                    height: 80, // Make it a bit taller to contain the button comfortably
+                    anchor: AnchorPoint.BottomLeft,
+                    offsetX: 10,
+                    offsetY: -100
+                );
+                _scaleWithButton.BackgroundColor = new Vector4(0.3f, 0.4f, 0.3f, 1.0f);
+
+                _scalableButton = new ButtonWidget(
+                    id: "scalableButton",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    width: 100, // Initial width
+                    height: 30, // Initial height
+                    text: "Scalable Btn",
+                    anchor: AnchorPoint.MiddleCenter, // Center it within the ScaleWidget
+                    offsetX: 0,
+                    offsetY: 0
+                );
+                _scalableButton.OnClick += () => Console.WriteLine("Scalable Button Clicked!");
+
+                _scaleWithButton.AddChild(_scalableButton);
+                _scaleWithButton.OnValueChanged += (scaleValue) => 
+                {
+                    if (_scalableButton != null)
+                    {
+                        Console.WriteLine($"ScaleWithButton Value: {scaleValue}, Button Width: {_scalableButton.WidgetWidth}, Height: {_scalableButton.WidgetHeight}");
+                    }
+                };
+
                 _userInterface.AddWidget(_helloWorldLabel);
                 _userInterface.AddWidget(_bounceEffectLabel);
                 _userInterface.AddWidget(_randomBounceEffectLabel);
@@ -381,6 +423,7 @@ namespace GameEditor
                 _userInterface.AddWidget(_controlledScale);
                 _userInterface.AddWidget(_scaleWithChildrenHorizontal);
                 _userInterface.AddWidget(_scaleWithChildrenVertical);
+                _userInterface.AddWidget(_scaleWithButton); // Add the new ScaleWidget to the UI
 
                 // Update positions for all widgets after adding them
                 UpdateAllWidgetPositions();
