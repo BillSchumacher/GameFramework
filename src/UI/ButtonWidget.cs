@@ -3,6 +3,10 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using GameFramework.Rendering;
 using OpenTK.Windowing.GraphicsLibraryFramework; // Ensure this is present
+using System.IO; // Added for Path operations
+using System.Reflection; // Added for Assembly operations
+using System.Collections.Generic; // Added for List
+using System.Linq; // Added for Linq operations
 
 namespace GameFramework.UI
 {
@@ -102,11 +106,63 @@ namespace GameFramework.UI
             _label.TextColor = _textColor; // Ensure color is set
         }
 
-        private static void InitializeRendering(string vertexShaderPath = "src/Shaders/ui_vertex.glsl", string fragmentShaderPath = "src/Shaders/ui_fragment_color.glsl")
+        private static string? ResolveShaderPath(string shaderFileName)
+        {
+            string? assemblyDir = Path.GetDirectoryName(typeof(ButtonWidget).Assembly.Location);
+            if (string.IsNullOrEmpty(assemblyDir))
+            {
+                assemblyDir = AppContext.BaseDirectory; // Fallback
+            }
+
+            var searchBaseDirs = new List<string>();
+            if (!string.IsNullOrEmpty(assemblyDir)) {
+                searchBaseDirs.Add(assemblyDir);
+            }
+            searchBaseDirs.Add(AppContext.BaseDirectory); // Add execution directory of the app
+
+            // Define relative paths to the Shaders folder
+            string[] shaderRelativeFolders = {
+                Path.Combine("src", "Shaders"), // As per GameFramework.csproj
+                "Shaders"                       // A common alternative
+            };
+
+            List<string> attemptedPaths = new List<string>();
+
+            foreach (var baseDir in searchBaseDirs.Distinct().Where(d => !string.IsNullOrEmpty(d)))
+            {
+                foreach (var relativeFolder in shaderRelativeFolders)
+                {
+                    string potentialPath = Path.Combine(baseDir!, relativeFolder, shaderFileName);
+                    attemptedPaths.Add(Path.GetFullPath(potentialPath));
+                    if (File.Exists(potentialPath))
+                    {
+                        return Path.GetFullPath(potentialPath);
+                    }
+                }
+            }
+            Console.WriteLine($"Shader file '{shaderFileName}' not found. Searched in paths derived from assembly and base directories:\n{string.Join("\n", attemptedPaths.Distinct())}");
+            return null;
+        }
+
+        private static void InitializeRendering(string vertexShaderName = "ui_vertex.glsl", string fragmentShaderName = "ui_fragment_color.glsl")
         {
             try
             {
-                _colorShaderProgram = ShaderHelper.CreateProgram(vertexShaderPath, fragmentShaderPath);
+                string? resolvedVertexShaderPath = ResolveShaderPath(vertexShaderName);
+                string? resolvedFragmentShaderPath = ResolveShaderPath(fragmentShaderName);
+
+                if (string.IsNullOrEmpty(resolvedVertexShaderPath) || string.IsNullOrEmpty(resolvedFragmentShaderPath))
+                {
+                    // Errors already logged by ResolveShaderPath if a shader is not found.
+                    // We can throw a specific exception here or let the ShaderHelper.CreateProgram handle it if paths are null/empty.
+                    // For now, let's ensure ShaderHelper.CreateProgram gets valid paths or it will throw.
+                    if (string.IsNullOrEmpty(resolvedVertexShaderPath))
+                        throw new FileNotFoundException($"Vertex shader '{vertexShaderName}' could not be resolved.", vertexShaderName);
+                    if (string.IsNullOrEmpty(resolvedFragmentShaderPath))
+                        throw new FileNotFoundException($"Fragment shader '{fragmentShaderName}' could not be resolved.", fragmentShaderName);
+                }
+
+                _colorShaderProgram = ShaderHelper.CreateProgram(resolvedVertexShaderPath!, resolvedFragmentShaderPath!);
                 _projectionMatrixLocation = GL.GetUniformLocation(_colorShaderProgram, "projection");
                 _modelMatrixLocation = GL.GetUniformLocation(_colorShaderProgram, "model");
                 _objectColorLocation = GL.GetUniformLocation(_colorShaderProgram, "objectColor");

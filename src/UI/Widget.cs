@@ -11,6 +11,7 @@ namespace GameFramework.UI
     [JsonDerivedType(typeof(HorizontalStackPanelWidget), "HorizontalStackPanelWidget")]
     [JsonDerivedType(typeof(VerticalStackPanelWidget), "VerticalStackPanelWidget")]
     [JsonDerivedType(typeof(TextFieldWidget), "TextFieldWidget")]
+    [JsonDerivedType(typeof(ScaleWidget), "ScaleWidget")]
     public class Widget
     {
         public string Id { get; set; }
