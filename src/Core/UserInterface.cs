@@ -4,6 +4,7 @@ using System.Linq;
 using GameFramework.UI; // Added using directive for the new UI namespace
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OpenTK.Windowing.GraphicsLibraryFramework; // Added for MouseButton
 
 namespace GameFramework
 {
@@ -60,9 +61,38 @@ namespace GameFramework
 
         public void Draw()
         {
+            // Draw widgets in the order they were added. 
+            // For click handling, we iterate in reverse.
             foreach (var widget in Widgets)
             {
-                widget.Draw(); // Now calls the virtual Draw method on the widget
+                if (widget.IsVisible)
+                {
+                    widget.Draw(); 
+                }
+            }
+        }
+
+        public void HandleMouseDown(float mouseX, float mouseY, MouseButton button)
+        {
+            // Iterate in reverse order so the top-most widget gets the event first.
+            for (int i = Widgets.Count - 1; i >= 0; i--)
+            {
+                var widget = Widgets[i];
+                if (widget.IsVisible)
+                {
+                    // Perform hit-testing
+                    // Assuming mouseX and mouseY are in the same coordinate system as widget.X/Y
+                    // And that widget.X/Y are the top-left coordinates after anchoring.
+                    if (mouseX >= widget.X && mouseX <= widget.X + widget.WidgetWidth &&
+                        mouseY >= widget.Y && mouseY <= widget.Y + widget.WidgetHeight)
+                    {
+                        // If the widget handles the event, stop processing.
+                        if (widget.OnMouseDown(mouseX, mouseY, button))
+                        {
+                            return; 
+                        }
+                    }
+                }
             }
         }
 

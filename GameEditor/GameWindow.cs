@@ -13,21 +13,19 @@ namespace GameEditor
 {
     public class GameWindow : OpenTK.Windowing.Desktop.GameWindow
     {
-        private const string FontAssetPath = "Assets/ARIAL.TTF"; // Relative to application base
-        private const float FontSize = 16f;
-        private string? _resolvedFontPath; // Made nullable
+        private const string FontNameForUI = "ARIAL.TTF"; // Using the constant for font name
+        private const float DefaultFontSize = 16f;
+        private string? _resolvedFontPath;
 
-        // UI Management
         private UserInterface _userInterface;
-
-        // Declare LabelWidgets for dynamic text - keep references for direct updates if needed
-        private LabelWidget? _helloWorldLabel; // Made nullable
-        private LabelWidget? _fpsLabel;      // Made nullable
+        private LabelWidget? _helloWorldLabel;
+        private LabelWidget? _fpsLabel;
+        private ButtonWidget? _sampleButton; // Added for the button
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
-            _userInterface = new UserInterface(); // Initialize UserInterface
+            _userInterface = new UserInterface();
         }
 
         protected override void OnLoad()
@@ -35,37 +33,82 @@ namespace GameEditor
             base.OnLoad();
             GL.ClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-            // Resolve font path
-            _resolvedFontPath = System.IO.Path.Combine(AppContext.BaseDirectory, FontAssetPath);
+            _resolvedFontPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", FontNameForUI);
             if (!File.Exists(_resolvedFontPath))
             {
-                Console.WriteLine($"FATAL ERROR: Font file not found at {_resolvedFontPath}. Ensure ARIAL.TTF is in the Assets folder and copied to output.");
-                // Optionally, throw an exception or close the window if the font is critical
-                // For now, we'll let FontRenderer.Initialize handle the File.Exists check and throw if it also can't find it.
+                Console.WriteLine($"FATAL ERROR: Font file not found at {_resolvedFontPath}.");
+                // Consider closing or throwing
+                return; // Exit OnLoad if font is missing
             }
 
-            // Set screen size for FontRenderer's projection matrix
             FontRenderer.ScreenWidth = ClientSize.X;
             FontRenderer.ScreenHeight = ClientSize.Y;
 
-            // Initialize FontRenderer
             try
             {
-                FontRenderer.Initialize(_resolvedFontPath, FontSize);
-                FontRenderer.UpdateProjectionMatrix();
+                FontRenderer.Initialize(_resolvedFontPath, DefaultFontSize);
+                // No need to call FontRenderer.UpdateProjectionMatrix(); here, as Initialize does it.
 
-                // Initialize LabelWidgets
-                _helloWorldLabel = new LabelWidget("helloLabel", 10, 10, "Hello World! Test 123 - GameEditor", new Vector3(1.0f, 1.0f, 1.0f));
-                _fpsLabel = new LabelWidget("fpsLabel", 10, 30, "FPS: 0", new Vector3(1.0f, 1.0f, 1.0f));
+                // Initialize LabelWidgets with anchoring
+                _helloWorldLabel = new LabelWidget(
+                    id: "helloLabel",
+                    x: 0, y: 0, // Initial X, Y are less important when anchored
+                    text: "Hello World! Anchored!",
+                    fontName: FontNameForUI, 
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(1.0f, 1.0f, 1.0f),
+                    anchor: AnchorPoint.TopLeft,
+                    offsetX: 10, 
+                    offsetY: 10
+                );
 
-                // Add widgets to the UserInterface
+                _fpsLabel = new LabelWidget(
+                    id: "fpsLabel",
+                    x: 0, y: 0,
+                    text: "FPS: 0",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(1.0f, 1.0f, 1.0f),
+                    anchor: AnchorPoint.TopRight,
+                    offsetX: -10, // Negative offset to come in from the right
+                    offsetY: 10
+                );
+
+                // Initialize ButtonWidget with anchoring
+                _sampleButton = new ButtonWidget(
+                    id: "sampleButton",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    width: 150,
+                    height: 40,
+                    text: "Click Me!",
+                    anchor: AnchorPoint.BottomCenter,
+                    offsetX: 0,
+                    offsetY: -20 // Negative offset to come up from the bottom
+                );
+
+                _sampleButton.OnClick += () => {
+                    Console.WriteLine("Button Clicked!");
+                };
+
                 _userInterface.AddWidget(_helloWorldLabel);
                 _userInterface.AddWidget(_fpsLabel);
+                _userInterface.AddWidget(_sampleButton);
+
+                // Update positions for all widgets after adding them
+                UpdateAllWidgetPositions();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error initializing FontRenderer: {ex.Message}");
-                // Handle error, perhaps close window or show an error message
+                Console.WriteLine($"Error initializing UI: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        private void UpdateAllWidgetPositions()
+        {
+            foreach (var widget in _userInterface.GetWidgets())
+            {
+                widget.UpdateActualPosition(ClientSize.X, ClientSize.Y);
             }
         }
 
@@ -74,17 +117,14 @@ namespace GameEditor
             base.OnRenderFrame(e);
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
-            // Update FPS label text
             if (_fpsLabel != null)
             {
                 _fpsLabel.Text = $"FPS: {1f / e.Time:F0}";
+                // Update the label's position after its text (and thus width) has changed.
+                _fpsLabel.UpdateActualPosition(ClientSize.X, ClientSize.Y);
             }
 
-            // Draw the UI
-            _userInterface.Draw(); // Draw all widgets managed by UserInterface
-
-            // TODO: Add editor rendering logic here
-
+            _userInterface.Draw();
             SwapBuffers();
         }
 
@@ -95,22 +135,37 @@ namespace GameEditor
             {
                 Close();
             }
+            // Potentially update widget states or handle input for UI elements here
         }
 
         protected override void OnResize(ResizeEventArgs e)
         {
             base.OnResize(e);
-            GL.Viewport(0, 0, ClientSize.X, ClientSize.Y); // Use ClientSize here
+            GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
 
-            // Update FontRenderer's projection matrix on resize
             FontRenderer.ScreenWidth = ClientSize.X;
             FontRenderer.ScreenHeight = ClientSize.Y;
             FontRenderer.UpdateProjectionMatrix();
+            ButtonWidget.ScreenWidth = ClientSize.X; // Also update for ButtonWidget's own projection
+            ButtonWidget.ScreenHeight = ClientSize.Y;
+            ButtonWidget.UpdateProjectionMatrix();
+
+            // Update positions of all widgets on resize
+            UpdateAllWidgetPositions();
+        }
+
+        protected override void OnMouseDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseDown(e);
+            // Pass mouse events to the UserInterface to handle widget interactions
+            _userInterface.HandleMouseDown(MouseState.X, MouseState.Y, e.Button);
         }
 
         protected override void OnUnload()
         {
-            FontRenderer.Dispose(); // Clean up FontRenderer resources
+            FontRenderer.Dispose();
+            // If ButtonWidget had its own static GL resources that need cleanup, do it here.
+            // For now, assuming FontRenderer.Dispose() covers shared font atlas, and ButtonWidget uses that.
             base.OnUnload();
         }
     }

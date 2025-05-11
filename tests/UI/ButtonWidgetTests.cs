@@ -1,6 +1,7 @@
 using Xunit;
 using GameFramework.UI;
 using OpenTK.Mathematics; // For Vector3
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace GameFramework.Tests.UI
 {
@@ -74,6 +75,55 @@ namespace GameFramework.Tests.UI
             Assert.Equal("Updated Text", button.Text);
             Assert.Equal(newBgColor, button.BackgroundColor);
             Assert.Equal(newTextColor, button.TextColor);
+        }
+
+        [Fact]
+        public void OnMouseDown_LeftButton_InvokesOnClickAndReturnsTrue()
+        {
+            // Arrange
+            var button = new ButtonWidget("testButton", "ARIAL.TTF", 16, 100, 30, "Test");
+            bool onClickCalled = false;
+            button.OnClick += () => { onClickCalled = true; };
+
+            // Act
+            bool result = button.OnMouseDown(10, 10, MouseButton.Left);
+
+            // Assert
+            Assert.True(onClickCalled, "OnClick event should have been invoked.");
+            Assert.True(result, "OnMouseDown should return true when handling a left click.");
+        }
+
+        [Theory]
+        [InlineData(MouseButton.Right)]
+        [InlineData(MouseButton.Middle)]
+        [InlineData(MouseButton.Button4)] // Example of another button
+        public void OnMouseDown_NonLeftButton_DoesNotInvokeOnClickAndReturnsFalse(MouseButton mouseButton)
+        {
+            // Arrange
+            var button = new ButtonWidget("testButton", "ARIAL.TTF", 16, 100, 30, "Test");
+            bool onClickCalled = false;
+            button.OnClick += () => { onClickCalled = true; };
+
+            // Act
+            bool result = button.OnMouseDown(10, 10, mouseButton);
+
+            // Assert
+            Assert.False(onClickCalled, "OnClick event should not have been invoked.");
+            Assert.False(result, "OnMouseDown should return false for non-left clicks.");
+        }
+
+        [Fact]
+        public void OnMouseDown_LeftButton_NoSubscriber_ReturnsTrue()
+        {
+            // Arrange
+            var button = new ButtonWidget("testButton", "ARIAL.TTF", 16, 100, 30, "Test");
+            // No OnClick subscriber
+
+            // Act
+            bool result = button.OnMouseDown(10, 10, MouseButton.Left);
+
+            // Assert
+            Assert.True(result, "OnMouseDown should still return true for a left click even if OnClick has no subscribers.");
         }
     }
 }
