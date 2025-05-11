@@ -408,23 +408,36 @@ namespace GameFramework.UI
             GL.UseProgram(_shaderProgram);
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, FontTextureID);
-            GL.Uniform1(_textureSamplerLocation, 0); 
-            GL.Uniform3(_textColorLocation, _currentColor); 
+            GL.Uniform1(_textureSamplerLocation, 0);
+            GL.Uniform3(_textColorLocation, _currentColor);
             GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix);
 
             GL.BindVertexArray(_vao);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo); 
+            GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo);
 
             float currentPenX = startX;
-            float charIndex = 0; // For staggering effects like bounce
+            float charIndex = 0;
 
-            foreach (char c in text)
+            string textToRender = text;
+            if (effect == TextEffect.Typewriter)
+            {
+                if (effectSpeed <= 0) effectSpeed = 10; // Default characters per second if speed is not set
+                int charsToShow = (int)(elapsedTime * effectSpeed);
+                if (charsToShow <= 0) textToRender = ""; // Show nothing if no time has passed or charsToShow is zero
+                else if (charsToShow < text.Length)
+                {
+                    textToRender = text.Substring(0, charsToShow);
+                }
+                // If charsToShow >= text.Length, textToRender remains the full text
+            }
+
+            foreach (char c in textToRender) // Use textToRender here
             {
                 if (!_characterMetrics.TryGetValue(c, out CharacterMetrics metrics))
                 {
-                    if (!_characterMetrics.TryGetValue('?', out metrics)) 
+                    if (!_characterMetrics.TryGetValue('?', out metrics))
                     {
-                        currentPenX += GetTextWidth(" ") / 2; 
+                        currentPenX += GetTextWidth(" ") / 2;
                         continue;
                     }
                 }
@@ -435,7 +448,7 @@ namespace GameFramework.UI
                     charIndex++;
                     continue;
                 }
-                
+
                 if (metrics.Width == 0 || metrics.Height == 0)
                 {
                     currentPenX += metrics.Advance;
@@ -444,6 +457,8 @@ namespace GameFramework.UI
                 }
 
                 float xPos = currentPenX + metrics.Bearing.X;
+                float yPos = startY + metrics.Bearing.Y;
+                float xOffset = 0;
                 float yOffset = 0;
 
                 if (effect == TextEffect.Bounce)
@@ -452,31 +467,38 @@ namespace GameFramework.UI
                 }
                 else if (effect == TextEffect.RandomBounce)
                 {
-                    int charSeed = (int)charIndex * 12345; // Multiply by a prime to spread seeds
+                    int charSeed = (int)charIndex * 12345;
                     Random charRandom = new Random(charSeed);
-
                     float charStrength = effectStrength * (0.5f + (float)charRandom.NextDouble() * 0.5f);
-                    float charSpeed = effectSpeed * (0.5f + (float)charRandom.NextDouble()); 
+                    float charSpeedFactor = effectSpeed * (0.5f + (float)charRandom.NextDouble());
                     float phaseOffset = (float)charRandom.NextDouble() * 2.0f * (float)Math.PI;
-
-                    yOffset = (float)Math.Sin((elapsedTime * charSpeed * 2 * Math.PI) + phaseOffset) * charStrength;
+                    yOffset = (float)Math.Sin((elapsedTime * charSpeedFactor * 2 * Math.PI) + phaseOffset) * charStrength;
                 }
-                
-                float yPos = startY + metrics.Bearing.Y + yOffset;
+                else if (effect == TextEffect.Jitter)
+                {
+                    // effectStrength controls max displacement. effectSpeed is not directly used here, jitter is per-frame.
+                    // Using the global _random for Jitter to make it less predictable per character over time
+                    xOffset = ((float)_random.NextDouble() * 2f - 1f) * effectStrength;
+                    yOffset = ((float)_random.NextDouble() * 2f - 1f) * effectStrength;
+                }
+                // Typewriter effect is handled by modifying textToRender, no specific per-character offset here unless combined.
+
+                xPos += xOffset;
+                yPos += yOffset;
 
                 float w = metrics.Width;
                 float h = metrics.Height;
 
-                _quadVertices[0] = xPos; _quadVertices[1] = yPos; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV;                                         
-                _quadVertices[4] = xPos; _quadVertices[5] = yPos + h; _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV + metrics.TexHeight;                     
-                _quadVertices[8] = xPos + w; _quadVertices[9] = yPos; _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV;                      
+                _quadVertices[0] = xPos; _quadVertices[1] = yPos; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV;
+                _quadVertices[4] = xPos; _quadVertices[5] = yPos + h; _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV + metrics.TexHeight;
+                _quadVertices[8] = xPos + w; _quadVertices[9] = yPos; _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV;
 
-                _quadVertices[12] = xPos; _quadVertices[13] = yPos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight;                  
-                _quadVertices[16] = xPos + w; _quadVertices[17] = yPos + h; _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV + metrics.TexHeight; 
-                _quadVertices[20] = xPos + w; _quadVertices[21] = yPos; _quadVertices[22] = metrics.TexU + metrics.TexWidth; _quadVertices[23] = metrics.TexV;                   
+                _quadVertices[12] = xPos; _quadVertices[13] = yPos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight;
+                _quadVertices[16] = xPos + w; _quadVertices[17] = yPos + h; _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV + metrics.TexHeight;
+                _quadVertices[20] = xPos + w; _quadVertices[21] = yPos; _quadVertices[22] = metrics.TexU + metrics.TexWidth; _quadVertices[23] = metrics.TexV;
 
                 GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, _quadVertices.Length * sizeof(float), _quadVertices);
-                Matrix4 modelMatrix = Matrix4.Identity; 
+                Matrix4 modelMatrix = Matrix4.Identity;
                 GL.UniformMatrix4(_modelMatrixLocation, false, ref modelMatrix);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 

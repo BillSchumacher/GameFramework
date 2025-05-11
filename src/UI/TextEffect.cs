@@ -18,6 +18,16 @@ namespace GameFramework.UI
         /// <summary>
         /// Text characters bounce independently with random offsets, speeds, and heights.
         /// </summary>
-        RandomBounce
+        RandomBounce,
+
+        /// <summary>
+        /// Text characters jitter randomly.
+        /// </summary>
+        Jitter,
+
+        /// <summary>
+        /// Text appears as if being typed out one character at a time.
+        /// </summary>
+        Typewriter
     }
 }

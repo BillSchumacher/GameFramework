@@ -19,6 +19,10 @@ namespace GameEditor
 
         private UserInterface _userInterface;
         private LabelWidget? _helloWorldLabel;
+        private LabelWidget? _bounceEffectLabel;
+        private LabelWidget? _randomBounceEffectLabel;
+        private LabelWidget? _jitterEffectLabel;
+        private LabelWidget? _typewriterEffectLabel;
         private LabelWidget? _fpsLabel;
         private ButtonWidget? _sampleButton; // Added for the button
         private double _totalElapsedTime = 0.0; // Field to accumulate total elapsed time
@@ -54,16 +58,74 @@ namespace GameEditor
                 _helloWorldLabel = new LabelWidget(
                     id: "helloLabel",
                     x: 0, y: 0, // Initial X, Y are less important when anchored
-                    text: "Hello World! Anchored!",
+                    text: "Plain Text Example",
                     fontName: FontNameForUI, 
                     fontSize: (int)DefaultFontSize,
                     textColor: new Vector3(1.0f, 1.0f, 1.0f),
                     anchor: AnchorPoint.TopLeft,
                     offsetX: 10, 
                     offsetY: 10,
-                    currentTextEffect: TextEffect.RandomBounce, // Changed to RandomBounce
-                    effectSpeed: 1.5f,    // Adjust speed as needed
-                    effectStrength: 5.0f  // Adjust strength as needed
+                    currentTextEffect: TextEffect.None // Or any specific effect you want as the main one
+                );
+
+                _bounceEffectLabel = new LabelWidget(
+                    id: "bounceLabel",
+                    x: 0, y: 0,
+                    text: "Bouncing Text!",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(0.8f, 1.0f, 0.8f), // Light green
+                    anchor: AnchorPoint.TopLeft,
+                    offsetX: 10,
+                    offsetY: 40, // Position below the previous label
+                    currentTextEffect: TextEffect.Bounce,
+                    effectSpeed: 2.0f,
+                    effectStrength: 8.0f
+                );
+
+                _randomBounceEffectLabel = new LabelWidget(
+                    id: "randomBounceLabel",
+                    x: 0, y: 0,
+                    text: "Random Bounce Madness!",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(0.8f, 0.8f, 1.0f), // Light blue
+                    anchor: AnchorPoint.TopLeft,
+                    offsetX: 10,
+                    offsetY: 70, // Position below the previous label
+                    currentTextEffect: TextEffect.RandomBounce,
+                    effectSpeed: 1.5f,
+                    effectStrength: 10.0f
+                );
+
+                _jitterEffectLabel = new LabelWidget(
+                    id: "jitterLabel",
+                    x: 0, y: 0,
+                    text: "Jittery Jitter Jitter!",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(1.0f, 1.0f, 0.7f), // Light yellow
+                    anchor: AnchorPoint.TopLeft,
+                    offsetX: 10,
+                    offsetY: 100, // Position below the previous label
+                    currentTextEffect: TextEffect.Jitter,
+                    effectSpeed: 0.0f, // Not used by current Jitter impl.
+                    effectStrength: 1.0f // Max pixel displacement
+                );
+
+                _typewriterEffectLabel = new LabelWidget(
+                    id: "typewriterLabel",
+                    x: 0, y: 0,
+                    text: "Typewriter effect is typing...",
+                    fontName: FontNameForUI,
+                    fontSize: (int)DefaultFontSize,
+                    textColor: new Vector3(1.0f, 0.7f, 0.7f), // Light red
+                    anchor: AnchorPoint.TopLeft,
+                    offsetX: 10,
+                    offsetY: 130, // Position below the previous label
+                    currentTextEffect: TextEffect.Typewriter,
+                    effectSpeed: 8.0f, // Characters per second
+                    effectStrength: 0.0f // Not used by Typewriter
                 );
 
                 _fpsLabel = new LabelWidget(
@@ -96,6 +158,10 @@ namespace GameEditor
                 };
 
                 _userInterface.AddWidget(_helloWorldLabel);
+                _userInterface.AddWidget(_bounceEffectLabel);
+                _userInterface.AddWidget(_randomBounceEffectLabel);
+                _userInterface.AddWidget(_jitterEffectLabel);
+                _userInterface.AddWidget(_typewriterEffectLabel);
                 _userInterface.AddWidget(_fpsLabel);
                 _userInterface.AddWidget(_sampleButton);
 
