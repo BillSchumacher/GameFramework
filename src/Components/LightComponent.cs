@@ -1,4 +1,5 @@
 using System;
+using GameFramework.Core;
 
 namespace GameFramework
 {
@@ -15,7 +16,7 @@ namespace GameFramework
         /// <summary>
         /// Gets or sets the WorldObject this component is attached to.
         /// </summary>
-        public WorldObject? Parent { get; set; } // Made Parent nullable
+        public global::GameFramework.Core.WorldObject? Parent { get; set; } // Explicitly qualified with global::
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LightComponent"/> class.
@@ -53,7 +54,7 @@ namespace GameFramework
             // Light position could be updated relative to the Parent WorldObject if needed.
             // For now, Light has its own Position property.
             // If the Light's position should follow the WorldObject, that logic would go here.
-            if (Parent != null && Light != null) // Ensure Parent and Light are not null
+            if (Parent is not null && Light != null) // Used "is not null" for nullable reference type
             {
                 // Example: Make the light follow the parent object. 
                 // This assumes Light.Position is in world space and Parent.X, Y, Z are also world space.

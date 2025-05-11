@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using System.Numerics;
+using GameFramework.Core; // Added using statement
 
 namespace GameFramework
 {
     public class MeshComponent : IComponent
     {
-        public WorldObject? Parent { get; set; } // Made Parent nullable
+        public global::GameFramework.Core.WorldObject? Parent { get; set; } // Explicitly qualified with global::
         public List<Vector3> Vertices { get; private set; }
         public List<int> Indices { get; private set; }
         public List<Vector2> UVs { get; private set; }
@@ -20,7 +21,7 @@ namespace GameFramework
         public void OnAttach()
         {
             // Logic to handle attachment, e.g., registering with a rendering system
-            if (Parent != null)
+            if (Parent is not null) // Used "is not null" for nullable reference type
             {
                 // Example: Parent.RegisterComponent(this);
             }
@@ -29,7 +30,7 @@ namespace GameFramework
         public void OnDetach()
         {
             // Logic to handle detachment, e.g., unregistering from a rendering system
-            if (Parent != null)
+            if (Parent is not null) // Used "is not null" for nullable reference type
             {
                 // Example: Parent.UnregisterComponent(this);
             }

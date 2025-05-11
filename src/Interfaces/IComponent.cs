@@ -1,3 +1,5 @@
+using GameFramework.Core;
+
 namespace GameFramework
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace GameFramework
         /// <summary>
         /// Gets or sets the WorldObject this component is attached to.
         /// </summary>
-        WorldObject? Parent { get; set; }
+        global::GameFramework.Core.WorldObject? Parent { get; set; }
 
         /// <summary>
         /// Called when the component is added to a WorldObject.

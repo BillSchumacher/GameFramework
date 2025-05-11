@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic; // Required for List
 using System.Linq; // Required for FirstOrDefault
 
-namespace GameFramework
+namespace GameFramework.Core // Changed from GameFramework
 {
     public class WorldObject
     {

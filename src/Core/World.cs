@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GameFramework
+namespace GameFramework.Core
 {
     public class World
     {

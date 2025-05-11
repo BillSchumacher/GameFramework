@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic; // Required for List
 using System.Linq; // Required for LastOrDefault
 
-namespace GameFramework
+namespace GameFramework.Core // Changed from GameFramework
 {
-    public class Player
+    public class Player : WorldObject // Added inheritance from WorldObject
     {
-        public string Name { get; private set; }
+        // public string Name { get; private set; } // Removed as it's inherited from WorldObject
         public int Score { get; set; }
         public PlayerType Type { get; private set; } // Added PlayerType property
         public string LastAction => actionHistory.LastOrDefault()?.Action.Name ?? string.Empty; // Updated to get Name from BaseAction
@@ -15,16 +15,13 @@ namespace GameFramework
 
         private readonly List<PlayerAction> actionHistory; // New field for action history
 
-        public Player(string name, PlayerType type = PlayerType.Local) // Added PlayerType parameter with default value
+        // Updated constructor to call base constructor and use inherited Name
+        public Player(string name, PlayerType type = PlayerType.Local, int initialX = 0, int initialY = 0, int initialZ = 0) 
+            : base(name, initialX, initialY, initialZ) // Call base constructor
         {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException("Player name cannot be null or whitespace.", nameof(name));
-            }
-            Name = name;
-            Score = 0; // Default score
-            Type = type; // Assign PlayerType
-            actionHistory = new List<PlayerAction>(); // Initialize action history
+            // Name is set by base constructor
+            Type = type;
+            actionHistory = new List<PlayerAction>();
         }
 
         public void AssignControl(WorldObject worldObject)

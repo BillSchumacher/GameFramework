@@ -1,11 +1,12 @@
 using System;
 using System.Drawing; // Required for Color
+using GameFramework.Core; // Added using statement
 
 namespace GameFramework
 {
     public class SpriteComponent : IComponent
     {
-        public WorldObject? Parent { get; set; } // Made Parent nullable
+        public global::GameFramework.Core.WorldObject? Parent { get; set; } // Explicitly qualified with global::
         public string SpritePath { get; private set; }
         public Color Color { get; set; } // Tint color for the sprite
         // public Material Material { get; set; } // Future enhancement for custom shaders

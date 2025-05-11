@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using GameFramework.Core; // Added for World
 
 namespace GameFramework
 {
@@ -12,6 +13,7 @@ namespace GameFramework
         {
             // Add services required by your GameFramework for web functionalities
             services.AddRouting(); 
+            services.AddSingleton<World>(); // Register World as a singleton service
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

@@ -1,4 +1,5 @@
 using System;
+using GameFramework.Core;
 
 namespace GameFramework
 {

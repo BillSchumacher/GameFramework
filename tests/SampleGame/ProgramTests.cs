@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using System.Threading.Tasks;
 using Moq;
+using GameFramework.Core; // Added for World and Player
+using Microsoft.Extensions.DependencyInjection; // Added for IServiceProvider, IServiceScope, IServiceScopeFactory
+using System; // Added for IServiceProvider
 
 namespace GameFramework.Tests.SampleGame
 {
@@ -46,6 +49,33 @@ namespace GameFramework.Tests.SampleGame
             Assert.NotNull(host);
             // Further assertions can be made here if specific services or configurations
             // are expected to be set up by CreateHostBuilder.
+        }
+
+        [Fact]
+        public void InitializeGame_Should_AddPlayerToWorld()
+        {
+            // Arrange
+            var worldMock = new Mock<World>(); // Assuming GameFramework.Core.World
+            var scopedServiceProviderMock = new Mock<IServiceProvider>();
+            scopedServiceProviderMock.Setup(sp => sp.GetService(typeof(World)))
+                                     .Returns(worldMock.Object);
+
+            var scopeMock = new Mock<IServiceScope>();
+            scopeMock.Setup(s => s.ServiceProvider).Returns(scopedServiceProviderMock.Object);
+
+            var serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
+            serviceScopeFactoryMock.Setup(ssf => ssf.CreateScope()).Returns(scopeMock.Object);
+
+            var hostServicesMock = new Mock<IServiceProvider>();
+            hostServicesMock.Setup(s => s.GetService(typeof(IServiceScopeFactory)))
+                            .Returns(serviceScopeFactoryMock.Object);
+
+            // Act
+            Program.InitializeGame(hostServicesMock.Object); // Assuming Program.InitializeGame is public static
+
+            // Assert
+            // Assuming World has an AddObject method and Player is a WorldObject
+            worldMock.Verify(w => w.AddObject(It.IsAny<Player>()), Times.Once);
         }
     }
 }
