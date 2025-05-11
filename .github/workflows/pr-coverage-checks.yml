@@ -1,0 +1,62 @@
+name: PR Coverage Checks
+
+on:
+  pull_request:
+    branches:
+      - main # Adjust if your main branch has a different name, e.g., master
+
+jobs:
+  build-test-and-report-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Required for actions/checkout
+      # Add checks: write and/or pull-requests: write if you configure ReportGenerator-GitHub-Action
+      # to create check runs or post PR comments. For job summary and artifacts, 'read' is sufficient.
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # Assuming .NET 8.0, adjust if needed
+
+    - name: Restore dependencies
+      run: dotnet restore GameFramework.sln
+
+    - name: Build solution
+      run: dotnet build GameFramework.sln --configuration Release --no-restore
+
+    - name: Run tests and collect coverage
+      run: >
+        dotnet test GameFramework.sln
+        --configuration Release
+        --no-build
+        --settings default.runsettings
+        --collect:"XPlat Code Coverage"
+        --logger "trx;LogFileName=test-results.trx"
+        --results-directory ./TestResults_CI
+
+    - name: Generate and publish coverage report
+      uses: danielpalme/ReportGenerator-GitHub-Action@5.3.0
+      with:
+        reports: './TestResults_CI/**/coverage.cobertura.xml' # Path to Cobertura files
+        targetdir: 'coveragereport_ci' # Output directory for the HTML report
+        reporttypes: 'Html;TextSummary' # Generate HTML report and a text summary for the job summary
+        tag: '${{ github.sha }}' # Tag the report with the commit SHA
+
+    - name: Upload HTML Coverage Report artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: html-coverage-report
+        path: coveragereport_ci
+        if-no-files-found: warn # Don't fail the workflow if report is missing, but warn
+
+    - name: Upload Test Results artifact
+      if: always() # Always run this step to upload test results, even if previous steps fail
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: ./TestResults_CI/**/*.trx
+        if-no-files-found: warn # Don't fail the workflow if TRX files are missing, but warn

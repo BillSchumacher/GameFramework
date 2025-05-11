@@ -236,18 +236,33 @@ namespace GameFramework.Tests
             player.AssignControl(worldObject);
             int frameNumber = 1;
 
-            // Act: Simulate moving right. We'll assume "move_right" input translates to X+1.
-            player.HandleInput("move_right", frameNumber);
-
+            // Act: Simulate moving right.
+            player.HandleInput("move_right", frameNumber++);
             // Assert
             Assert.Equal(1, player.ControlledObject?.X);
             Assert.Equal(0, player.ControlledObject?.Y);
-            Assert.Equal(0, player.ControlledObject?.Z); // Added Z assertion
+            Assert.Equal(0, player.ControlledObject?.Z);
 
-            player.HandleInput("move_up", frameNumber + 1);
+            // Act: Simulate moving up.
+            player.HandleInput("move_up", frameNumber++);
+            // Assert
             Assert.Equal(1, player.ControlledObject?.X);
             Assert.Equal(1, player.ControlledObject?.Y);
-            Assert.Equal(0, player.ControlledObject?.Z); // Added Z assertion
+            Assert.Equal(0, player.ControlledObject?.Z);
+
+            // Act: Simulate moving left.
+            player.HandleInput("move_left", frameNumber++);
+            // Assert
+            Assert.Equal(0, player.ControlledObject?.X);
+            Assert.Equal(1, player.ControlledObject?.Y);
+            Assert.Equal(0, player.ControlledObject?.Z);
+
+            // Act: Simulate moving down.
+            player.HandleInput("move_down", frameNumber++);
+            // Assert
+            Assert.Equal(0, player.ControlledObject?.X);
+            Assert.Equal(0, player.ControlledObject?.Y);
+            Assert.Equal(0, player.ControlledObject?.Z);
         }
 
         [Fact]
@@ -263,6 +278,49 @@ namespace GameFramework.Tests
             // Assert
             Assert.NotNull(player.Camera);
             Assert.Same(camera, player.Camera);
+        }
+
+        [Fact]
+        public void Player_ReleaseControl_WhenNotControllingObject_ShouldDoNothing()
+        {
+            // Arrange
+            var player = new Player("TestPlayer");
+            // Ensure ControlledObject is null initially
+            Assert.Null(player.ControlledObject);
+
+            // Act
+            player.ReleaseControl();
+
+            // Assert
+            Assert.Null(player.ControlledObject); // Should still be null
+            // No exception should be thrown
+        }
+
+        [Fact]
+        public void Player_HandleInput_UnknownInput_ShouldNotMoveObjectAndStoreAction()
+        {
+            // Arrange
+            var player = new Player("TestPlayer");
+            var worldObject = new WorldObject("ControllableObject", 0, 0, 0);
+            player.AssignControl(worldObject);
+            int frameNumber = 5;
+            string unknownInput = "fly_to_the_moon";
+
+            // Act
+            player.HandleInput(unknownInput, frameNumber);
+
+            // Assert
+            // Object position should not change
+            Assert.Equal(0, player.ControlledObject?.X);
+            Assert.Equal(0, player.ControlledObject?.Y);
+            Assert.Equal(0, player.ControlledObject?.Z);
+
+            // Action should still be recorded
+            Assert.Equal(unknownInput, player.LastAction);
+            var history = player.GetActionHistory();
+            Assert.Single(history);
+            Assert.Equal(unknownInput, history[0].Action.Name);
+            Assert.Equal(frameNumber, history[0].FrameNumber);
         }
     }
 }

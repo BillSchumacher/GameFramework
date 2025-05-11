@@ -107,5 +107,39 @@ namespace GameFramework.Tests
             Assert.Equal(20, camera.Y); // Camera position should not change
             Assert.Equal(30, camera.Z); // Camera position should not change
         }
+
+        [Fact]
+        public void Camera_SetPosition_ShouldUpdateXYZ_WhenNotAttached()
+        {
+            // Arrange
+            var camera = new Camera(0, 0, 0);
+
+            // Act
+            camera.SetPosition(10, 20, 30);
+
+            // Assert
+            Assert.Equal(10, camera.X);
+            Assert.Equal(20, camera.Y);
+            Assert.Equal(30, camera.Z);
+        }
+
+        [Fact]
+        public void Camera_SetPosition_ShouldNotUpdateXYZ_WhenAttached()
+        {
+            // Arrange
+            var camera = new Camera(0, 0, 0);
+            var worldObject = new WorldObject("AttachedObj", 5, 5, 5);
+            camera.AttachToObject(worldObject);
+            camera.UpdatePosition(); // Sync with attached object
+
+            // Act
+            camera.SetPosition(10, 20, 30); // Attempt to manually set position
+
+            // Assert
+            // Position should remain that of the attached object
+            Assert.Equal(5, camera.X);
+            Assert.Equal(5, camera.Y);
+            Assert.Equal(5, camera.Z);
+        }
     }
 }

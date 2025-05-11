@@ -16,6 +16,7 @@
 [Bb]uild[Ll]og.*
 *.VisualState.xml
 TestResult.xml
+coveragereport/
 *_i.c
 *_p.c
 *_h.h
