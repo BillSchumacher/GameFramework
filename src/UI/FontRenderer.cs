@@ -388,53 +388,65 @@ namespace GameFramework.UI
             GL.UseProgram(_shaderProgram);
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, FontTextureID);
-            GL.Uniform1(_textureSamplerLocation, 0); // Ensure texture unit 0
-            GL.Uniform3(_textColorLocation, _currentColor); // Ensure current color is set
-            GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix); // Ensure projection is set
+            GL.Uniform1(_textureSamplerLocation, 0); 
+            GL.Uniform3(_textColorLocation, _currentColor); 
+            GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix);
 
             GL.BindVertexArray(_vao);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo); // Bind VBO for SubData
+            GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo); 
 
-            float currentPenX = 0;
+            float currentPenX = startX; // Start drawing from startX
 
             foreach (char c in text)
             {
-                if (!_characterMetrics.TryGetValue(c, out var metrics))
+                if (!_characterMetrics.TryGetValue(c, out CharacterMetrics metrics))
                 {
-                    if (!_characterMetrics.TryGetValue('?', out metrics)) continue;
+                    if (_characterMetrics.TryGetValue('?', out metrics)) // Fallback to '?'
+                    {
+                        // Use '?' metrics
+                    }
+                    else
+                    {
+                        currentPenX += GetTextWidth(" ") / 2; // Arbitrary advance if '?' also missing
+                        continue;
+                    }
                 }
 
-                if (metrics.Width == 0 && metrics.Height == 0 && metrics.TexWidth == 0 && metrics.TexHeight == 0) // Space or non-rendered char
+                if (c == ' ') // Handle space specifically for advance
+                {
+                    currentPenX += metrics.Advance;
+                    continue;
+                }
+                
+                // Skip rendering for characters with no visual dimension, but still advance
+                if (metrics.Width == 0 || metrics.Height == 0)
                 {
                     currentPenX += metrics.Advance;
                     continue;
                 }
 
-                // Position of the quad on screen
-                // Adjust ypos calculation: startY is top of text line, baseline is startY + ascender.
-                // metrics.Bearing.Y is offset from baseline to glyph top (usually negative for ascenders).
-                float baselineY = startY + _scaledAscender;
-                float xpos = startX + currentPenX + metrics.Bearing.X;
-                float ypos = baselineY + metrics.Bearing.Y;
+                float xPos = currentPenX + metrics.Bearing.X;
+                
+                // Corrected yPos calculation:
+                // Assumes startY is the ascender line (top of the text line).
+                // Assumes metrics.Bearing.Y is the distance DOWNWARDS from the ascender line to the character's glyph top.
+                float yPos = startY + metrics.Bearing.Y;
 
                 float w = metrics.Width;
                 float h = metrics.Height;
 
-                // Vertex data for this character's quad
-                // x, y, u, v
-                _quadVertices[0] = xpos; _quadVertices[1] = ypos + h; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV + metrics.TexHeight; // Bottom-Left
-                _quadVertices[4] = xpos; _quadVertices[5] = ypos; _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV;                 // Top-Left
-                _quadVertices[8] = xpos + w; _quadVertices[9] = ypos; _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV; // Top-Right
+                // Quad vertices: TopLeft, BottomLeft, TopRight, BottomLeft, BottomRight, TopRight
+                _quadVertices[0] = xPos; _quadVertices[1] = yPos; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV;                                         // Top-left
+                _quadVertices[4] = xPos; _quadVertices[5] = yPos + h; _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV + metrics.TexHeight;                     // Bottom-left
+                _quadVertices[8] = xPos + w; _quadVertices[9] = yPos; _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV;                      // Top-right
 
-                _quadVertices[12] = xpos; _quadVertices[13] = ypos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight; // Bottom-Left
-                _quadVertices[16] = xpos + w; _quadVertices[17] = ypos; _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV; // Top-Right
-                _quadVertices[20] = xpos + w; _quadVertices[21] = ypos + h; _quadVertices[22] = metrics.TexU + metrics.TexWidth; _quadVertices[23] = metrics.TexV + metrics.TexHeight; // Bottom-Right
-
-                // Model matrix is identity for text rendering if vertices are already in screen space
-                Matrix4 modelMatrix = Matrix4.Identity;
-                GL.UniformMatrix4(_modelMatrixLocation, false, ref modelMatrix);
+                _quadVertices[12] = xPos; _quadVertices[13] = yPos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight;                  // Bottom-left
+                _quadVertices[16] = xPos + w; _quadVertices[17] = yPos + h; _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV + metrics.TexHeight; // Bottom-right
+                _quadVertices[20] = xPos + w; _quadVertices[21] = yPos; _quadVertices[22] = metrics.TexU + metrics.TexWidth; _quadVertices[23] = metrics.TexV;                   // Top-right
 
                 GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, _quadVertices.Length * sizeof(float), _quadVertices);
+                Matrix4 modelMatrix = Matrix4.Identity; // Text is drawn in screen coordinates, model is identity
+                GL.UniformMatrix4(_modelMatrixLocation, false, ref modelMatrix);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
                 currentPenX += metrics.Advance;
@@ -442,7 +454,7 @@ namespace GameFramework.UI
 
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
             GL.BindVertexArray(0);
-            GL.BindTexture(TextureTarget.Texture2D, 0);
+            GL.UseProgram(0);
         }
 
         /// <summary>
