@@ -31,6 +31,12 @@ namespace GameEditor
         private ScaleWidget? _verticalScale;
         private ScaleWidget? _controlledScale;
         private LabelWidget? _controlledScaleLabel;
+        private ScaleWidget? _scaleWithChildrenHorizontal;
+        private LabelWidget? _childLabelForHorizontalScale;
+        private ButtonWidget? _childButtonForHorizontalScale;
+        private ScaleWidget? _scaleWithChildrenVertical;
+        private PanelWidget? _childPanelForVerticalScale;
+        private LabelWidget? _childLabelInPanelForVerticalScale;
         private double _totalElapsedTime = 0.0; // Field to accumulate total elapsed time
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
@@ -266,6 +272,90 @@ namespace GameEditor
                     Console.WriteLine($"Controlled Scale Value: {value}");
                 };
 
+                // Horizontal ScaleWidget with Children
+                _scaleWithChildrenHorizontal = new ScaleWidget(
+                    id: "scaleWithChildrenHorizontal",
+                    minValue: 0,
+                    maxValue: 100,
+                    initialValue: 50,
+                    orientation: GameFramework.UI.Orientation.Horizontal,
+                    x: 0, y: 0, // Anchored
+                    width: 250,
+                    height: 80, // Made taller to accommodate children
+                    anchor: AnchorPoint.MiddleLeft,
+                    offsetX: 20,
+                    offsetY: -50 // Adjusted Y to be above bottom elements
+                );
+                _scaleWithChildrenHorizontal.BackgroundColor = new Vector4(0.3f, 0.3f, 0.4f, 1.0f); // Slightly different background
+
+                _childLabelForHorizontalScale = new LabelWidget(
+                    id: "childLabelH",
+                    x: 10, y: 10, // Relative to parent ScaleWidget
+                    text: "Child Lbl",
+                    fontName: FontNameForUI,
+                    fontSize: (int)(DefaultFontSize * 0.8), // Smaller font
+                    textColor: new Vector3(1.0f, 1.0f, 1.0f),
+                    anchor: AnchorPoint.TopLeft // Anchored within parent
+                );
+
+                _childButtonForHorizontalScale = new ButtonWidget(
+                    id: "childButtonH",
+                    fontName: FontNameForUI,
+                    fontSize: (int)(DefaultFontSize * 0.8),
+                    width: 80, // Smaller button
+                    height: 25,
+                    text: "Child Btn",
+                    anchor: AnchorPoint.BottomRight, // Anchored within parent
+                    offsetX: -10,
+                    offsetY: -10
+                );
+                _childButtonForHorizontalScale.OnClick += () => Console.WriteLine("Child Button in Horizontal Scale Clicked!");
+
+                _scaleWithChildrenHorizontal.AddChild(_childLabelForHorizontalScale);
+                _scaleWithChildrenHorizontal.AddChild(_childButtonForHorizontalScale);
+                _scaleWithChildrenHorizontal.OnValueChanged += (value) => Console.WriteLine($"Horizontal Scale w/ Children Value: {value}");
+
+                // Vertical ScaleWidget with Children
+                _scaleWithChildrenVertical = new ScaleWidget(
+                    id: "scaleWithChildrenVertical",
+                    minValue: 0,
+                    maxValue: 100,
+                    initialValue: 75,
+                    orientation: GameFramework.UI.Orientation.Vertical,
+                    x: 0, y: 0, // Anchored
+                    width: 80, // Made wider to accommodate child panel
+                    height: 250,
+                    anchor: AnchorPoint.MiddleRight,
+                    offsetX: -100, // Further from the right edge
+                    offsetY: 0
+                );
+                _scaleWithChildrenVertical.BackgroundColor = new Vector4(0.4f, 0.3f, 0.3f, 1.0f); // Slightly different background
+
+                _childPanelForVerticalScale = new PanelWidget(
+                    id: "childPanelV",
+                    x: 5, y: 5, // Relative to parent ScaleWidget
+                    width: 60, // Smaller than parent
+                    height: 100,
+                    backgroundColor: new Vector4(0.2f, 0.2f, 0.2f, 0.8f),
+                    anchor: AnchorPoint.TopCenter, // Anchored within parent
+                    offsetX: 0,
+                    offsetY: 10
+                );
+
+                _childLabelInPanelForVerticalScale = new LabelWidget(
+                    id: "childLabelInPanelV",
+                    x: 0, y: 0, // Will be centered in panel
+                    text: "Nested",
+                    fontName: FontNameForUI,
+                    fontSize: (int)(DefaultFontSize * 0.7),
+                    textColor: new Vector3(0.9f, 0.9f, 0.9f),
+                    anchor: AnchorPoint.MiddleCenter // Centered within its parent panel
+                );
+                _childPanelForVerticalScale.AddChild(_childLabelInPanelForVerticalScale); // Add label to panel
+
+                _scaleWithChildrenVertical.AddChild(_childPanelForVerticalScale); // Add panel to scale widget
+                _scaleWithChildrenVertical.OnValueChanged += (value) => Console.WriteLine($"Vertical Scale w/ Children Value: {value}");
+
                 _userInterface.AddWidget(_helloWorldLabel);
                 _userInterface.AddWidget(_bounceEffectLabel);
                 _userInterface.AddWidget(_randomBounceEffectLabel);
@@ -278,6 +368,8 @@ namespace GameEditor
                 _userInterface.AddWidget(_verticalScale);
                 _userInterface.AddWidget(_controlledScaleLabel);
                 _userInterface.AddWidget(_controlledScale);
+                _userInterface.AddWidget(_scaleWithChildrenHorizontal);
+                _userInterface.AddWidget(_scaleWithChildrenVertical);
 
                 // Update positions for all widgets after adding them
                 UpdateAllWidgetPositions();

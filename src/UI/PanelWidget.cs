@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using OpenTK.Mathematics; // Added for Vector4
 
 namespace GameFramework.UI
 {
@@ -17,7 +18,8 @@ namespace GameFramework.UI
         }
 
         [JsonConstructor]
-        public PanelWidget(string id, int x, int y, int width, int height) : base(id, x, y)
+        public PanelWidget(string id, int x, int y, int width, int height, Vector4? backgroundColor = null, AnchorPoint anchor = AnchorPoint.Manual, int offsetX = 0, int offsetY = 0) 
+            : base(id, x, y, anchor, offsetX, offsetY)
         {
             if (width <= 0 && GetType() == typeof(PanelWidget))
             {
@@ -30,6 +32,10 @@ namespace GameFramework.UI
             Width = width > 0 ? width : 100; // Ensure positive dimensions
             Height = height > 0 ? height : 100;
             Children = new List<Widget>();
+            if (backgroundColor.HasValue)
+            {
+                BackgroundColor = backgroundColor.Value;
+            }
         }
 
         public void AddChild(Widget widget)

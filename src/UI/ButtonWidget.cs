@@ -47,7 +47,7 @@ namespace GameFramework.UI
             set { WidgetHeight = value; /* Potentially trigger UI update */ }
         }
 
-        public Vector3 BackgroundColor { get; set; }
+        public override Vector4 BackgroundColor { get; set; }
 
         public Vector3 TextColor
         {
@@ -95,7 +95,7 @@ namespace GameFramework.UI
             _fontName = fontName;
             _fontSize = fontSize;
             _text = text ?? string.Empty;
-            BackgroundColor = new Vector3(0.7f, 0.7f, 0.7f); // Default background
+            BackgroundColor = new Vector4(0.7f, 0.7f, 0.7f, 1.0f); // Default background (now Vector4 with alpha)
             TextColor = new Vector3(0.0f, 0.0f, 0.0f);     // Default text color
 
             // Label is centered within the button, with no further offset from that center point.
@@ -243,7 +243,7 @@ namespace GameFramework.UI
             Matrix4 model = Matrix4.CreateScale(this.WidgetWidth, this.WidgetHeight, 1.0f) * Matrix4.CreateTranslation(this.X, this.Y, 0.0f);
             GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix);
             GL.UniformMatrix4(_modelMatrixLocation, false, ref model);
-            GL.Uniform3(_objectColorLocation, BackgroundColor);
+            GL.Uniform3(_objectColorLocation, BackgroundColor.Xyz); // Use only the RGB components
 
             GL.BindVertexArray(_vao);
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);

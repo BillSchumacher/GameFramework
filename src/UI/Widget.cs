@@ -27,6 +27,12 @@ namespace GameFramework.UI
         public virtual int WidgetWidth { get; set; }
         public virtual int WidgetHeight { get; set; }
 
+        /// <summary>
+        /// Gets or sets the background color of the widget.
+        /// Default is transparent.
+        /// </summary>
+        public virtual OpenTK.Mathematics.Vector4 BackgroundColor { get; set; } = new OpenTK.Mathematics.Vector4(0, 0, 0, 0); // Default transparent
+
         // Parameterless constructor for JSON deserialization
         public Widget() : this("default_widget_id", 0, 0)
         {
