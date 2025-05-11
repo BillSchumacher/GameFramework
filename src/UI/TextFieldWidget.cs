@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
+using OpenTK.Mathematics; // Added for Matrix4
 
 namespace GameFramework.UI
 {
@@ -47,13 +48,15 @@ namespace GameFramework.UI
             }
         }
 
-        public override void Draw() // Added override
+        public override void Draw(float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
         {
-            base.Draw();
-            if (IsVisible)
-            {
-                Console.WriteLine($"Drawing TextField: {(string.IsNullOrEmpty(Text) ? Placeholder : Text)} at ({X}, {Y})");
-            }
+            if (!IsVisible) return;
+
+            // Draw background using base class logic
+            base.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
+
+            // Placeholder for text field specific drawing (text, cursor, border)
+            // FontRenderer.Instance.DrawText(...);
         }
     }
 }

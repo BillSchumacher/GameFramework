@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
+using OpenTK.Mathematics; // Added for Matrix4
 
 namespace GameFramework.UI
 {
@@ -29,14 +30,16 @@ namespace GameFramework.UI
         }
 
         // Example of a custom Draw method for a CheckboxWidget
-        public override void Draw() // Added override
+        public override void Draw(float elapsedTime, Matrix4 projectionMatrix) // Corrected signature, added projectionMatrix
         {
-            base.Draw();
-            if (IsVisible)
-            {
-                // Placeholder for actual drawing logic
-                Console.WriteLine($"Drawing Checkbox: {Text} [{(IsChecked ? "X" : " ")}] at ({X}, {Y})");
-            }
+            if (!IsVisible) return;
+
+            // Base widget draw for background (if any)
+            base.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
+
+            // Placeholder for actual drawing logic for the checkbox itself (e.g., box and checkmark)
+            // This would likely involve its own shader or drawing primitives.
+            // For now, only the background (if defined) will be drawn by the base call.
         }
     }
 }

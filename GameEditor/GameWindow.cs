@@ -38,6 +38,7 @@ namespace GameEditor
         private PanelWidget? _childPanelForVerticalScale;
         private LabelWidget? _childLabelInPanelForVerticalScale;
         private double _totalElapsedTime = 0.0; // Field to accumulate total elapsed time
+        private Matrix4 _projectionMatrix; // Added to store the projection matrix
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -50,6 +51,9 @@ namespace GameEditor
             base.OnLoad();
             GL.ClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
+            // Initialize projection matrix
+            _projectionMatrix = Matrix4.CreateOrthographicOffCenter(0, ClientSize.X, ClientSize.Y, 0, -1f, 1f);
+
             _resolvedFontPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", FontNameForUI);
             if (!File.Exists(_resolvedFontPath))
             {
@@ -60,12 +64,13 @@ namespace GameEditor
 
             FontRenderer.ScreenWidth = ClientSize.X;
             FontRenderer.ScreenHeight = ClientSize.Y;
+            // FontRenderer.Initialize will set its own projection matrix, 
+            // but we also maintain one here for general UI widget rendering.
+            FontRenderer.Initialize(_resolvedFontPath, DefaultFontSize);
+            FontRenderer.UpdateProjectionMatrix(); // Ensure FontRenderer's matrix is also up-to-date
 
             try
             {
-                FontRenderer.Initialize(_resolvedFontPath, DefaultFontSize);
-                // No need to call FontRenderer.UpdateProjectionMatrix(); here, as Initialize does it.
-
                 // Initialize LabelWidgets with anchoring
                 _helloWorldLabel = new LabelWidget(
                     id: "helloLabel",
@@ -215,9 +220,9 @@ namespace GameEditor
                     x: 0, y: 0, // Anchored
                     width: 200,
                     height: 20,
-                    anchor: AnchorPoint.BottomLeft,
-                    offsetX: 10,
-                    offsetY: -80
+                    anchor: AnchorPoint.MiddleCenter, 
+                    offsetX: 0, // Changed
+                    offsetY: -100 
                 );
                 _horizontalScale.OnValueChanged += (value) => Console.WriteLine($"Horizontal Scale Value: {value}");
 
@@ -231,9 +236,9 @@ namespace GameEditor
                     x: 0, y: 0, // Anchored
                     width: 20,
                     height: 150,
-                    anchor: AnchorPoint.MiddleRight,
-                    offsetX: -50,
-                    offsetY: 0
+                    anchor: AnchorPoint.MiddleCenter, 
+                    offsetX: 0,  // Changed
+                    offsetY: -75   
                 );
                 _verticalScale.OnValueChanged += (value) => Console.WriteLine($"Vertical Scale Value: {value}");
 
@@ -245,9 +250,9 @@ namespace GameEditor
                     fontName: FontNameForUI,
                     fontSize: (int)DefaultFontSize,
                     textColor: new Vector3(1.0f, 1.0f, 1.0f),
-                    anchor: AnchorPoint.BottomLeft,
-                    offsetX: 10,
-                    offsetY: -140 // Position above the horizontal scale
+                    anchor: AnchorPoint.MiddleCenter, 
+                    offsetX: 0, // Changed
+                    offsetY: -160 
                 );
 
                 _controlledScale = new ScaleWidget(
@@ -259,15 +264,15 @@ namespace GameEditor
                     x: 0, y: 0, // Anchored
                     width: 200,
                     height: 20,
-                    anchor: AnchorPoint.BottomLeft,
-                    offsetX: 10,
-                    offsetY: -110 // Position below the label, above horizontal scale
+                    anchor: AnchorPoint.MiddleCenter, 
+                    offsetX: 0, // Changed
+                    offsetY: -130  
                 );
                 _controlledScale.OnValueChanged += (value) => {
                     if (_controlledScaleLabel != null)
                     {
                         _controlledScaleLabel.Text = $"Controlled Scale: {value:F0}";
-                        _controlledScaleLabel.UpdateActualPosition(ClientSize.X, ClientSize.Y); // Update label due to potential text width change
+                        _controlledScaleLabel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y); 
                     }
                     Console.WriteLine($"Controlled Scale Value: {value}");
                 };
@@ -281,21 +286,24 @@ namespace GameEditor
                     orientation: GameFramework.UI.Orientation.Horizontal,
                     x: 0, y: 0, // Anchored
                     width: 250,
-                    height: 80, // Made taller to accommodate children
-                    anchor: AnchorPoint.MiddleLeft,
-                    offsetX: 20,
-                    offsetY: -50 // Adjusted Y to be above bottom elements
+                    height: 80, 
+                    anchor: AnchorPoint.MiddleCenter, 
+                    offsetX: 0, // Changed
+                    offsetY: 0     
                 );
-                _scaleWithChildrenHorizontal.BackgroundColor = new Vector4(0.3f, 0.3f, 0.4f, 1.0f); // Slightly different background
+                _scaleWithChildrenHorizontal.BackgroundColor = new Vector4(0.3f, 0.3f, 0.4f, 1.0f); 
 
                 _childLabelForHorizontalScale = new LabelWidget(
                     id: "childLabelH",
-                    x: 10, y: 10, // Relative to parent ScaleWidget
+                    x: 0, // Initial X/Y are less critical when offsetX/Y are used with anchoring
+                    y: 0,
                     text: "Child Lbl",
                     fontName: FontNameForUI,
                     fontSize: (int)(DefaultFontSize * 0.8), // Smaller font
                     textColor: new Vector3(1.0f, 1.0f, 1.0f),
-                    anchor: AnchorPoint.TopLeft // Anchored within parent
+                    anchor: AnchorPoint.TopLeft, // Anchored within parent
+                    offsetX: 10, // Explicitly use offsetX for positioning
+                    offsetY: 10  // Explicitly use offsetY for positioning
                 );
 
                 _childButtonForHorizontalScale = new ButtonWidget(
@@ -323,13 +331,13 @@ namespace GameEditor
                     initialValue: 75,
                     orientation: GameFramework.UI.Orientation.Vertical,
                     x: 0, y: 0, // Anchored
-                    width: 80, // Made wider to accommodate child panel
+                    width: 80, 
                     height: 250,
-                    anchor: AnchorPoint.MiddleRight,
-                    offsetX: -100, // Further from the right edge
-                    offsetY: 0
+                    anchor: AnchorPoint.MiddleCenter, 
+                    offsetX: 0,  // Changed
+                    offsetY: 0     
                 );
-                _scaleWithChildrenVertical.BackgroundColor = new Vector4(0.4f, 0.3f, 0.3f, 1.0f); // Slightly different background
+                _scaleWithChildrenVertical.BackgroundColor = new Vector4(0.4f, 0.3f, 0.3f, 1.0f); 
 
                 _childPanelForVerticalScale = new PanelWidget(
                     id: "childPanelV",
@@ -384,14 +392,14 @@ namespace GameEditor
         {
             foreach (var widget in _userInterface.GetWidgets())
             {
-                widget.UpdateActualPosition(ClientSize.X, ClientSize.Y);
+                widget.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y);
             }
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)
         {
             base.OnRenderFrame(e);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit); // Added DepthBufferBit
 
             _totalElapsedTime += e.Time; // Accumulate total time
 
@@ -399,11 +407,11 @@ namespace GameEditor
             {
                 _fpsLabel.Text = $"FPS: {1f / e.Time:F0}";
                 // Update the label's position after its text (and thus width) has changed.
-                _fpsLabel.UpdateActualPosition(ClientSize.X, ClientSize.Y);
+                _fpsLabel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y);
             }
 
-            // Pass accumulated time to UserInterface.Draw
-            _userInterface.Draw((float)_totalElapsedTime);
+            // Pass accumulated time and projection matrix to UserInterface.Draw
+            _userInterface.Draw((float)_totalElapsedTime, _projectionMatrix);
             SwapBuffers();
         }
 
@@ -422,12 +430,12 @@ namespace GameEditor
             base.OnResize(e);
             GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
 
+            // Update the projection matrix for the window
+            _projectionMatrix = Matrix4.CreateOrthographicOffCenter(0, ClientSize.X, ClientSize.Y, 0, -1f, 1f);
+
             FontRenderer.ScreenWidth = ClientSize.X;
             FontRenderer.ScreenHeight = ClientSize.Y;
-            FontRenderer.UpdateProjectionMatrix();
-            ButtonWidget.ScreenWidth = ClientSize.X; // Also update for ButtonWidget's own projection
-            ButtonWidget.ScreenHeight = ClientSize.Y;
-            ButtonWidget.UpdateProjectionMatrix();
+            FontRenderer.UpdateProjectionMatrix(); // Update FontRenderer's internal matrix
 
             // Update positions of all widgets on resize
             UpdateAllWidgetPositions();

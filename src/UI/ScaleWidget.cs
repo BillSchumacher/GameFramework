@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using OpenTK.Mathematics; // Assuming Vector2 for MinValue, MaxValue, CurrentValue if needed for float values
 using System.Collections.Generic; // Added for List
 using System.Linq; // Added for Linq
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace GameFramework.UI
 {
@@ -16,7 +17,7 @@ namespace GameFramework.UI
         private float _currentValue;
         private Orientation _orientation;
         private List<Widget> _children = new List<Widget>();
-        private Dictionary<Widget, (int originalWidth, int originalHeight)> _originalChildDimensions = new Dictionary<Widget, (int, int)>();
+        private Dictionary<string, (AnchorPoint Anchor, int OffsetX, int OffsetY, int OriginalWidth, int OriginalHeight)> _originalChildSetups = new Dictionary<string, (AnchorPoint, int, int, int, int)>();
 
         /// <summary>
         /// Gets or sets the minimum value of the scale.
@@ -60,9 +61,22 @@ namespace GameFramework.UI
             get => _currentValue;
             set
             {
-                _currentValue = Math.Clamp(value, _minValue, _maxValue);
-                ApplyScaleToChildren();
-                OnValueChanged?.Invoke(_currentValue);
+                float clampedValue = Math.Clamp(value, MinValue, MaxValue);
+                if (_currentValue != clampedValue)
+                {
+                    _currentValue = clampedValue;
+                    OnValueChanged?.Invoke(_currentValue);
+                    if (Parent != null) 
+                    {
+                        // Update this widget's position based on its parent
+                        UpdateActualPosition(Parent.ActualX, Parent.ActualY, Parent.WidgetWidth, Parent.WidgetHeight);
+                    }
+                    else if (FontRenderer.ScreenWidth > 0 && FontRenderer.ScreenHeight > 0)
+                    {
+                        // Update this widget's position based on screen dimensions if no parent
+                        UpdateActualPosition(0, 0, FontRenderer.ScreenWidth, FontRenderer.ScreenHeight);
+                    }
+                }
             }
         }
 
@@ -122,116 +136,167 @@ namespace GameFramework.UI
 
         public void AddChild(Widget child)
         {
-            if (!_children.Contains(child))
+            if (child == null) throw new ArgumentNullException(nameof(child));
+            if (_children.Contains(child)) return;
+
+            _children.Add(child);
+            _originalChildSetups[child.Id] = (child.Anchor, child.OffsetX, child.OffsetY, child.WidgetWidth, child.WidgetHeight);
+            
+            // Ensure positions are updated after adding a child.
+            // The ScaleWidget itself needs its position updated based on its parent/screen.
+            // This will then trigger an update for the new child as well within UpdateActualPosition.
+            if (Parent != null)
             {
-                _children.Add(child);
-                _originalChildDimensions[child] = (child.WidgetWidth, child.WidgetHeight);
-                ApplyScaleToChild(child);
+                UpdateActualPosition(Parent.ActualX, Parent.ActualY, Parent.WidgetWidth, Parent.WidgetHeight); 
+            }
+            else if (FontRenderer.ScreenWidth > 0 && FontRenderer.ScreenHeight > 0) 
+            {
+                 UpdateActualPosition(0, 0, FontRenderer.ScreenWidth, FontRenderer.ScreenHeight);
             }
         }
 
         public void RemoveChild(Widget child)
         {
-            if (_children.Remove(child))
-            {
-                _originalChildDimensions.Remove(child);
-            }
+            if (child == null) return;
+            _children.Remove(child);
+            _originalChildSetups.Remove(child.Id);
         }
 
-        private void ApplyScaleToChildren()
+        public IEnumerable<Widget> GetChildren()
         {
+            return _children.AsReadOnly();
+        }
+
+        public override void UpdateActualPosition(float parentActualX, float parentActualY, float containerWidth, float containerHeight)
+        {
+            // Update ScaleWidget's own position first
+            base.UpdateActualPosition(parentActualX, parentActualY, containerWidth, containerHeight);
+
+            float scaleFactor = GetScaleFactor();
+
             foreach (var child in _children)
             {
-                ApplyScaleToChild(child);
-            }
-        }
-
-        private void ApplyScaleToChild(Widget child)
-        {
-            if (_originalChildDimensions.TryGetValue(child, out var originalDimensions))
-            {
-                float scaleFactor = 0;
-                if (MaxValue - MinValue != 0)
+                if (!_originalChildSetups.TryGetValue(child.Id, out var setup))
                 {
-                    scaleFactor = (CurrentValue - MinValue) / (MaxValue - MinValue);
+                    // Fallback, though AddChild should prevent this.
+                    setup = (child.Anchor, child.OffsetX, child.OffsetY, child.WidgetWidth, child.WidgetHeight);
+                    _originalChildSetups[child.Id] = setup; 
                 }
-                else if (MinValue == MaxValue && MaxValue != 0)
+
+                // Restore child's original anchor and offsets for positioning relative to ScaleWidget.
+                child.Anchor = setup.Anchor;
+                child.OffsetX = setup.OffsetX;
+                child.OffsetY = setup.OffsetY;
+
+                // Calculate scaled dimensions for the child based on its original dimensions.
+                int originalChildWidth = setup.OriginalWidth;
+                int originalChildHeight = setup.OriginalHeight;
+
+                if (Orientation == Orientation.Horizontal)
                 {
-                    scaleFactor = CurrentValue == MinValue ? 1.0f : 0f;
+                    child.WidgetWidth = (int)(originalChildWidth * scaleFactor);
+                    // Height remains original for horizontal scaling, or could also be scaled if desired.
+                    // For now, only width is scaled.
+                    child.WidgetHeight = originalChildHeight; 
                 }
-                scaleFactor = Math.Max(0, scaleFactor);
+                else // Vertical
+                {
+                    child.WidgetHeight = (int)(originalChildHeight * scaleFactor);
+                    // Width remains original for vertical scaling.
+                    child.WidgetWidth = originalChildWidth;
+                }
 
-                child.WidgetWidth = (int)(originalDimensions.originalWidth * scaleFactor);
-                child.WidgetHeight = (int)(originalDimensions.originalHeight * scaleFactor);
-                child.UpdateActualPosition(this.WidgetWidth, this.WidgetHeight);
+                // Child calculates its ActualX, ActualY relative to this ScaleWidget.
+                // The container for the child is this ScaleWidget.
+                child.UpdateActualPosition(this.ActualX, this.ActualY, this.WidgetWidth, this.WidgetHeight);
             }
         }
 
-        public override void UpdateActualPosition(int parentWidth, int parentHeight)
+        public override void Draw(float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
         {
-            base.UpdateActualPosition(parentWidth, parentHeight);
-            foreach (var child in _children)
-            {
-                child.UpdateActualPosition(this.WidgetWidth, this.WidgetHeight);
-            }
-        }
-
-        public override void Draw()
-        {
-            base.Draw();
             if (!IsVisible) return;
 
-            foreach (var child in _children)
+            // Draw background of the ScaleWidget itself (e.g., the track)
+            base.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
+
+            // TODO: Draw the thumb/handle of the scale widget
+            // This would involve calculating the thumb's position based on CurrentValue
+            // and then drawing a small quad or image for the thumb.
+            // Example: DrawThumb(projectionMatrix);
+
+            // Draw children (if any)
+            // Children are scaled and positioned in UpdateActualPosition
+            foreach (var child in _children.Where(c => c.IsVisible))
             {
-                if (child.IsVisible)
-                {
-                    child.Draw();
-                }
+                child.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
             }
         }
-
-        public override bool OnMouseDown(float mouseX, float mouseY, OpenTK.Windowing.GraphicsLibraryFramework.MouseButton button)
+        
+        public override bool OnMouseDown(float mouseX, float mouseY, MouseButton button)
         {
             if (!IsVisible) return false;
 
-            bool selfInteracted = false;
-            if (IsMouseOver(mouseX, mouseY))
+            bool isOverInteractiveArea = this.HitTest(mouseX, mouseY); 
+
+            if (isOverInteractiveArea)
             {
-                float newValue;
+                float relativeMouseX = mouseX - this.X;
+                float relativeMouseY = mouseY - this.Y;
+
                 if (Orientation == Orientation.Horizontal)
                 {
-                    float relativeX = mouseX - this.X;
-                    newValue = MinValue + (relativeX / WidgetWidth) * (MaxValue - MinValue);
+                    if (this.WidgetWidth > 0)
+                    {
+                        float newValueRatio = Math.Clamp(relativeMouseX / this.WidgetWidth, 0.0f, 1.0f);
+                        CurrentValue = MinValue + (MaxValue - MinValue) * newValueRatio;
+                    }
                 }
                 else
                 {
-                    float relativeY = mouseY - this.Y;
-                    newValue = MinValue + (relativeY / WidgetHeight) * (MaxValue - MinValue);
+                    if (this.WidgetHeight > 0)
+                    {
+                        float newValueRatio = Math.Clamp(relativeMouseY / this.WidgetHeight, 0.0f, 1.0f);
+                        CurrentValue = MinValue + (MaxValue - MinValue) * newValueRatio;
+                    }
                 }
-                CurrentValue = newValue;
-                selfInteracted = true;
+                return true;
             }
 
-            for (int i = _children.Count - 1; i >= 0; i--)
+            foreach (var child in _children.Reverse<Widget>()) 
             {
-                var child = _children[i];
-                if (child.IsVisible && child.OnMouseDown(mouseX, mouseY, button))
+                if (child.IsVisible && child.HitTest(mouseX, mouseY)) 
                 {
-                    return true;
+                    if (child.OnMouseDown(mouseX, mouseY, button))
+                    {
+                        return true;
+                    }
                 }
             }
-
-            return selfInteracted;
+            return false;
         }
 
-        /// <summary>
-        /// Helper method to check if mouse coordinates are over the widget.
-        /// </summary>
-        protected bool IsMouseOver(float mouseX, float mouseY)
+        public override bool HitTest(float mouseX, float mouseY) 
         {
+            if (!IsVisible) return false;
+            // Check if mouse is over the ScaleWidget itself (its bounding box)
             return mouseX >= X && mouseX <= X + WidgetWidth &&
                    mouseY >= Y && mouseY <= Y + WidgetHeight;
         }
+
+        private float GetScaleFactor()
+        {
+            if (MaxValue - MinValue != 0)
+            {
+                return (CurrentValue - MinValue) / (MaxValue - MinValue);
+            }
+            else if (MinValue == MaxValue && MaxValue != 0)
+            {
+                return CurrentValue == MinValue ? 1.0f : 0f;
+            }
+            return 0;
+        }
+
+        public Widget? Parent { get; set; }
     }
 
     /// <summary>

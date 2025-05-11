@@ -5,6 +5,7 @@ using GameFramework.UI; // Added using directive for the new UI namespace
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenTK.Windowing.GraphicsLibraryFramework; // Added for MouseButton
+using OpenTK.Mathematics; // Added for Matrix4
 
 namespace GameFramework
 {
@@ -59,28 +60,11 @@ namespace GameFramework
             return Widgets.AsReadOnly();
         }
 
-        // Modified Draw method to accept elapsedTime
-        public void Draw(float elapsedTime)
+        public void Draw(float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix parameter
         {
-            foreach (var widget in Widgets)
+            foreach (var widget in Widgets.Where(w => w.IsVisible)) 
             {
-                if (widget.IsVisible)
-                {
-                    // Check if the widget is a LabelWidget to pass elapsedTime
-                    // For other widget types, call their existing Draw() or adapt as needed
-                    if (widget is LabelWidget label)
-                    {
-                        // Assuming LabelWidget.Draw now takes parentAbsoluteX, parentAbsoluteY, and elapsedTime.
-                        // For UI elements directly on the UserInterface, parentAbsoluteX and Y are 0.
-                        label.Draw(0, 0, elapsedTime);
-                    }
-                    else
-                    {
-                        // Fallback for other widget types that might not have an elapsedTime-aware Draw method yet.
-                        // Or, if all widgets are expected to have Draw(float elapsedTime), this could be simplified.
-                        widget.Draw(); 
-                    }
-                }
+                widget.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix to widget's Draw method
             }
         }
 
@@ -92,11 +76,9 @@ namespace GameFramework
                 var widget = Widgets[i];
                 if (widget.IsVisible)
                 {
-                    // Perform hit-testing
-                    // Assuming mouseX and mouseY are in the same coordinate system as widget.X/Y
-                    // And that widget.X/Y are the top-left coordinates after anchoring.
-                    if (mouseX >= widget.X && mouseX <= widget.X + widget.WidgetWidth &&
-                        mouseY >= widget.Y && mouseY <= widget.Y + widget.WidgetHeight)
+                    // Perform hit-testing using ActualX and ActualY
+                    if (mouseX >= widget.ActualX && mouseX <= widget.ActualX + widget.WidgetWidth &&
+                        mouseY >= widget.ActualY && mouseY <= widget.ActualY + widget.WidgetHeight)
                     {
                         // If the widget handles the event, stop processing.
                         if (widget.OnMouseDown(mouseX, mouseY, button))

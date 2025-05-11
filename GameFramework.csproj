@@ -32,6 +32,7 @@
       <PackagePath>\\</PackagePath>
     </None>
     <Content Include="src\\Shaders\\**\\*.glsl">
+      <Link>Shaders\\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

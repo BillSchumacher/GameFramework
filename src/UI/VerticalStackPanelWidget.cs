@@ -1,34 +1,39 @@
 using System;
 using System.Linq;
+using OpenTK.Mathematics; // Added for Matrix4
 
 namespace GameFramework.UI
 {
     public class VerticalStackPanelWidget : StackPanelWidget
     {
-        public VerticalStackPanelWidget(string id, int x, int y, int spacing) : base(id, x, y, spacing)
+        public VerticalStackPanelWidget(string id, int x, int y, int width, int height, int spacing, AnchorPoint anchor = AnchorPoint.Manual, int offsetX = 0, int offsetY = 0)
+            : base(id, x, y, width, height, Orientation.Vertical, anchor, offsetX, offsetY)
         {
+            Spacing = spacing;
         }
 
         public override void RecalculateLayout()
         {
-            int currentY = this.Y;
+            int currentY = 0;
+            int maxWidth = 0;
             foreach (var child in Children)
             {
-                child.SetPosition(this.X, currentY); // Align all children to the stack's X
-                
-                var childHeight = 20; // Placeholder: replace with actual height logic
-                if (child is PanelWidget panel) childHeight = panel.Height;
-
-                currentY += childHeight + Spacing;
+                child.X = 0;      // Align to left of stack panel
+                child.Y = currentY; // Position child relative to stack panel
+                currentY += child.WidgetHeight + Spacing;
+                if (child.WidgetWidth > maxWidth)
+                {
+                    maxWidth = child.WidgetWidth;
+                }
             }
+            // Optional: Adjust StackPanel size based on children
+            // WidgetHeight = currentY - Spacing; // if Spacing is added at the end
+            // WidgetWidth = maxWidth;
         }
 
-        public override void Draw()
+        public override void Draw(float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
         {
-            if (!IsVisible) return;
-
-            Console.WriteLine($"Drawing VerticalStackPanelWidget {Id} at ({X}, {Y}) with spacing {Spacing}");
-            base.Draw(); // This will call Draw on children
+            base.Draw(elapsedTime, projectionMatrix); // Call base to draw background if any, then draw children
         }
     }
 }

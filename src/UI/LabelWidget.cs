@@ -148,27 +148,59 @@ namespace GameFramework.UI
         /// Draws the label on the screen using FontRenderer.
         /// Assumes X and Y are relative to a parent if not drawn at top-level.
         /// </summary>
-        public override void Draw()
+        public override void Draw(float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
         {
-            Draw(0, 0, 0.0f);
+            if (!IsVisible || string.IsNullOrEmpty(Text)) return;
+
+            // A LabelWidget typically doesn't have its own background, so base.Draw(elapsedTime) is usually not called.
+            // If a background were desired, it would be: base.Draw(elapsedTime, projectionMatrix); // Pass projectionMatrix
+
+            // Set the color for the FontRenderer before drawing text
+            FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z);
+
+            FontRenderer.DrawText(
+                Text,
+                ActualX, 
+                ActualY, 
+                CurrentTextEffect, 
+                EffectStrength, 
+                EffectSpeed, 
+                elapsedTime, 
+                CharacterColors 
+            );
         }
 
         /// <summary>
         /// Draws the label on the screen at its relative X, Y offset by parent's absolute coordinates.
+        /// This overload might be redundant if UpdateActualPosition and the main Draw(elapsedTime) are used correctly.
         /// </summary>
         /// <param name="parentAbsoluteX">The absolute X coordinate of the parent container.</param>
         /// <param name="parentAbsoluteY">The absolute Y coordinate of the parent container.</param>
         /// <param name="elapsedTime">The elapsed time for animations.</param>
-        public void Draw(int parentAbsoluteX, int parentAbsoluteY, float elapsedTime)
+        /// <param name="projectionMatrix">The projection matrix for rendering.</param>
+        public void Draw(int parentAbsoluteX, int parentAbsoluteY, float elapsedTime, Matrix4 projectionMatrix) // Added projectionMatrix
         {
             if (!IsVisible || string.IsNullOrEmpty(Text) || string.IsNullOrEmpty(FontName) || FontSize <= 0)
             {
                 return;
             }
 
-            // Assumes FontRenderer is already initialized with the correct font (matching this.FontName, this.FontSize)
-            FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z); // Set global color first
-            FontRenderer.DrawText(Text, parentAbsoluteX + X, parentAbsoluteY + Y, CurrentTextEffect, EffectStrength, EffectSpeed, elapsedTime, CharacterColors);
+            float screenX = parentAbsoluteX + X;
+            float screenY = parentAbsoluteY + Y;
+
+            // Set the color for the FontRenderer before drawing text
+            FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z);
+
+            FontRenderer.DrawText(
+                Text, 
+                screenX,
+                screenY,
+                CurrentTextEffect,
+                EffectStrength,
+                EffectSpeed,
+                elapsedTime,
+                CharacterColors
+            );
         }
     }
 }
