@@ -7,6 +7,7 @@ using GameFramework.UI; // Added for FontRenderer and LabelWidget
 using GameFramework.Rendering; // Added for ShaderHelper (if FontRenderer relies on it being public, though likely internal)
 using System;
 using System.IO; // Added for Path.Combine and AppContext.BaseDirectory
+using GameFramework; // Added for UserInterface
 
 namespace GameEditor
 {
@@ -16,13 +17,17 @@ namespace GameEditor
         private const float FontSize = 16f;
         private string? _resolvedFontPath; // Made nullable
 
-        // Declare LabelWidgets for dynamic text
+        // UI Management
+        private UserInterface _userInterface;
+
+        // Declare LabelWidgets for dynamic text - keep references for direct updates if needed
         private LabelWidget? _helloWorldLabel; // Made nullable
         private LabelWidget? _fpsLabel;      // Made nullable
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
+            _userInterface = new UserInterface(); // Initialize UserInterface
         }
 
         protected override void OnLoad()
@@ -52,6 +57,10 @@ namespace GameEditor
                 // Initialize LabelWidgets
                 _helloWorldLabel = new LabelWidget("helloLabel", 10, 10, "Hello World! Test 123 - GameEditor", new Vector3(1.0f, 1.0f, 1.0f));
                 _fpsLabel = new LabelWidget("fpsLabel", 10, 30, "FPS: 0", new Vector3(1.0f, 1.0f, 1.0f));
+
+                // Add widgets to the UserInterface
+                _userInterface.AddWidget(_helloWorldLabel);
+                _userInterface.AddWidget(_fpsLabel);
             }
             catch (Exception ex)
             {
@@ -71,9 +80,8 @@ namespace GameEditor
                 _fpsLabel.Text = $"FPS: {1f / e.Time:F0}";
             }
 
-            // Draw the labels
-            _helloWorldLabel?.Draw(); // Use null-conditional operator
-            _fpsLabel?.Draw();        // Use null-conditional operator
+            // Draw the UI
+            _userInterface.Draw(); // Draw all widgets managed by UserInterface
 
             // TODO: Add editor rendering logic here
 
