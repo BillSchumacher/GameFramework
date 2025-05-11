@@ -11,10 +11,26 @@ namespace GameFramework.UI
     /// </summary>
     public class ButtonWidget : Widget
     {
+        private string _text; // Backing field for Text property
+        private Vector3 _textColor; // Backing field for TextColor property
+        private LabelWidget _label; // Internal LabelWidget for rendering text
+
         /// <summary>
         /// Gets or sets the text displayed on the button.
         /// </summary>
-        public string Text { get; set; }
+        public string Text
+        {
+            get => _text;
+            set
+            {
+                _text = value ?? string.Empty;
+                if (_label != null)
+                {
+                    _label.Text = _text;
+                }
+                UpdateLabelPosition(); // Update label position when text changes
+            }
+        }
 
         /// <summary>
         /// Occurs when the button is clicked.
@@ -39,7 +55,18 @@ namespace GameFramework.UI
         /// <summary>
         /// Gets or sets the text color of the button.
         /// </summary>
-        public Vector3 TextColor { get; set; }
+        public Vector3 TextColor
+        {
+            get => _textColor;
+            set
+            {
+                _textColor = value;
+                if (_label != null)
+                {
+                    _label.TextColor = _textColor; // Changed from _label.Color
+                }
+            }
+        }
 
         // Rendering resources for the button itself (background, border)
         private static int _colorShaderProgram = -1;
@@ -150,11 +177,54 @@ namespace GameFramework.UI
         [JsonConstructor]
         public ButtonWidget(string id, int x, int y, string text, int width = 100, int height = 30, Vector3? backgroundColor = null, Vector3? textColor = null) : base(id, x, y)
         {
-            Text = text ?? string.Empty;
+            // Initialize private fields first to satisfy non-nullable requirements
+            _text = text ?? string.Empty;
+            _textColor = textColor ?? new Vector3(0.1f, 0.1f, 0.1f); // Default dark gray
+
             Width = width;
             Height = height;
             BackgroundColor = backgroundColor ?? new Vector3(0.8f, 0.8f, 0.8f); // Default light gray
-            TextColor = textColor ?? new Vector3(0.1f, 0.1f, 0.1f);       // Default dark gray
+            // TextColor and Text properties are effectively set via the private fields _text and _textColor
+
+            // Create and configure the internal LabelWidget
+            // Id from base class is used to ensure unique label ID
+            _label = new LabelWidget($"{Id}_label", 0, 0, _text, _textColor); 
+            _label.IsVisible = this.IsVisible; // Sync initial visibility
+
+            // Position the label correctly within the button
+            // This needs to be called after ButtonWidget's X, Y, Width, Height are set.
+            UpdateLabelPosition();
+        }
+
+        /// <summary>
+        /// Updates the internal label's position based on the button's dimensions and position.
+        /// </summary>
+        private void UpdateLabelPosition()
+        {
+            if (_label == null) return;
+
+            // FontRenderer should be initialized by LabelWidget's constructor if needed
+            // or ensure FontRenderer is ready before these calls.
+            // Assuming FontRenderer is globally accessible and initialized.
+            float labelWidth = FontRenderer.GetTextWidth(_label.Text);
+            float labelHeight = FontRenderer.GetTextHeight(); // Corrected: GetTextHeight takes no arguments
+
+            // Calculate centered position for the label within the button
+            int labelX = X + (int)((Width - labelWidth) / 2);
+            int labelY = Y + (int)((Height - labelHeight) / 2);
+
+            _label.SetPosition(labelX, labelY);
+        }
+
+        /// <summary>
+        /// Sets the position of the widget. Also updates the internal label's position.
+        /// </summary>
+        /// <param name="x">The new x-coordinate.</param>
+        /// <param name="y">The new y-coordinate.</param>
+        public override void SetPosition(int x, int y)
+        {
+            base.SetPosition(x, y);
+            UpdateLabelPosition();
         }
 
         /// <summary>
@@ -171,33 +241,29 @@ namespace GameFramework.UI
         public override void Draw()
         {
             base.Draw();
-            if (!IsVisible || _colorShaderProgram == -1) return;
+            if (!IsVisible) return; // Simplified visibility check
 
-            GL.UseProgram(_colorShaderProgram);
-            GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix);
-
-            Matrix4 modelMatrix = Matrix4.CreateScale(Width, Height, 1.0f) * Matrix4.CreateTranslation(X, Y, 0f);
-            GL.UniformMatrix4(_modelMatrixLocation, false, ref modelMatrix);
-
-            GL.BindVertexArray(_vao);
-
-            // Use the instance's BackgroundColor property
-            GL.Uniform3(_objectColorLocation, BackgroundColor);
-            GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
-
-            GL.BindVertexArray(0);
-            GL.UseProgram(0);
-
-            if (!string.IsNullOrEmpty(Text))
+            // Draw background
+            if (_colorShaderProgram != -1)
             {
-                float textWidth = FontRenderer.GetTextWidth(Text);
-                float textHeight = FontRenderer.GetTextHeight();
-                float textX = X + (Width - textWidth) / 2;
-                float textY = Y + (Height - textHeight) / 2;
+                GL.UseProgram(_colorShaderProgram);
+                GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix);
 
-                // Use the instance's TextColor property
-                FontRenderer.SetColor(TextColor.X, TextColor.Y, TextColor.Z);
-                FontRenderer.DrawText(Text, textX, textY);
+                Matrix4 modelMatrix = Matrix4.CreateScale(Width, Height, 1.0f) * Matrix4.CreateTranslation(X, Y, 0f);
+                GL.UniformMatrix4(_modelMatrixLocation, false, ref modelMatrix);
+
+                GL.BindVertexArray(_vao);
+                GL.Uniform3(_objectColorLocation, BackgroundColor);
+                GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+                GL.BindVertexArray(0);
+                GL.UseProgram(0);
+            }
+
+            // Draw text using LabelWidget
+            if (_label != null)
+            {
+                _label.IsVisible = this.IsVisible; // Ensure visibility is synced
+                _label.Draw();
             }
         }
 

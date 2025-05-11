@@ -57,7 +57,7 @@ namespace GameFramework.UI
             IsVisible = false;
         }
 
-        public void SetPosition(int x, int y)
+        public virtual void SetPosition(int x, int y) // Added virtual keyword
         {
             X = x;
             Y = y;

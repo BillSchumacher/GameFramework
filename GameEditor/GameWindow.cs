@@ -3,7 +3,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using OpenTK.Mathematics; // Added for Matrix4
-using GameFramework.UI; // Added for FontRenderer
+using GameFramework.UI; // Added for FontRenderer and LabelWidget
 using GameFramework.Rendering; // Added for ShaderHelper (if FontRenderer relies on it being public, though likely internal)
 using System;
 using System.IO; // Added for Path.Combine and AppContext.BaseDirectory
@@ -14,7 +14,11 @@ namespace GameEditor
     {
         private const string FontAssetPath = "Assets/ARIAL.TTF"; // Relative to application base
         private const float FontSize = 16f;
-        private string _resolvedFontPath;
+        private string? _resolvedFontPath; // Made nullable
+
+        // Declare LabelWidgets for dynamic text
+        private LabelWidget? _helloWorldLabel; // Made nullable
+        private LabelWidget? _fpsLabel;      // Made nullable
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -43,8 +47,11 @@ namespace GameEditor
             try
             {
                 FontRenderer.Initialize(_resolvedFontPath, FontSize);
-                FontRenderer.SetColor(1.0f, 1.0f, 1.0f); // Set default text color to white
-                FontRenderer.UpdateProjectionMatrix(); 
+                FontRenderer.UpdateProjectionMatrix();
+
+                // Initialize LabelWidgets
+                _helloWorldLabel = new LabelWidget("helloLabel", 10, 10, "Hello World! Test 123 - GameEditor", new Vector3(1.0f, 1.0f, 1.0f));
+                _fpsLabel = new LabelWidget("fpsLabel", 10, 30, "FPS: 0", new Vector3(1.0f, 1.0f, 1.0f));
             }
             catch (Exception ex)
             {
@@ -58,8 +65,15 @@ namespace GameEditor
             base.OnRenderFrame(e);
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
-            FontRenderer.DrawText("Hello World! Test 123 - GameEditor", 10, 10);
-            FontRenderer.DrawText($"FPS: {1f / e.Time:F0}", 10, 30);
+            // Update FPS label text
+            if (_fpsLabel != null)
+            {
+                _fpsLabel.Text = $"FPS: {1f / e.Time:F0}";
+            }
+
+            // Draw the labels
+            _helloWorldLabel?.Draw(); // Use null-conditional operator
+            _fpsLabel?.Draw();        // Use null-conditional operator
 
             // TODO: Add editor rendering logic here
 
