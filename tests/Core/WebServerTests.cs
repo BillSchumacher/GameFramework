@@ -24,7 +24,8 @@ namespace GameFramework.Tests
             // Assert
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
-            Assert.Contains("Web Game from GameFramework Startup", content); // Updated assertion
+            Assert.Contains("worldObjectsCount", content);
+            Assert.Contains("players", content);
         }
     }
 }

@@ -19,6 +19,10 @@ namespace GameFramework.Core // Changed from GameFramework
         public Player(string name, PlayerType type = PlayerType.Local, int initialX = 0, int initialY = 0, int initialZ = 0) 
             : base(name, initialX, initialY, initialZ) // Call base constructor
         {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("Player name cannot be null or empty.", nameof(name));
+            }
             // Name is set by base constructor
             Type = type;
             actionHistory = new List<PlayerAction>();

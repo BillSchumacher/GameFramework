@@ -1,5 +1,6 @@
 using Xunit;
 using GameFramework;
+using GameFramework.Core; // Added this using directive
 using System.Linq;
 
 namespace GameFramework.Tests
