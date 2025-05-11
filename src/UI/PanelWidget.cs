@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using OpenTK.Mathematics; // Added for Vector4
+using GameFramework.Rendering; // Added for ShaderProgram
 
 namespace GameFramework.UI
 {
@@ -26,6 +27,15 @@ namespace GameFramework.UI
             if (backgroundColor.HasValue)
             {
                 BackgroundColor = backgroundColor.Value;
+            }
+            try
+            {
+                Shader = new ShaderProgram("src/Shaders/ui_vertex.glsl", "src/Shaders/ui_fragment_color.glsl");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading shader for PanelWidget {Id}: {ex.Message}");
+                Shader = null; // Ensure shader is null if loading fails
             }
         }
 

@@ -4,6 +4,7 @@ using OpenTK.Mathematics; // Assuming Vector2 for MinValue, MaxValue, CurrentVal
 using System.Collections.Generic; // Added for List
 using System.Linq; // Added for Linq
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using GameFramework.Rendering; // Added for ShaderProgram
 
 namespace GameFramework.UI
 {
@@ -130,8 +131,20 @@ namespace GameFramework.UI
             Orientation = orientation;
             CurrentValue = Math.Clamp(initialValue, _minValue, _maxValue); // Set initial value, clamped
 
-            WidgetWidth = width;
-            WidgetHeight = height;
+            WidgetWidth = width > 0 ? width : (orientation == Orientation.Horizontal ? 100 : 20);
+            WidgetHeight = height > 0 ? height : (orientation == Orientation.Horizontal ? 20 : 100);
+            _children = new List<Widget>();
+            _originalChildSetups = new Dictionary<string, (AnchorPoint Anchor, int OffsetX, int OffsetY, int OriginalWidth, int OriginalHeight)>();
+
+            try
+            {
+                Shader = new ShaderProgram("src/Shaders/ui_vertex.glsl", "src/Shaders/ui_fragment_color.glsl");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading shader for ScaleWidget {Id}: {ex.Message}");
+                Shader = null; // Ensure shader is null if loading fails
+            }
         }
 
         public void AddChild(Widget child)

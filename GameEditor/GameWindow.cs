@@ -224,6 +224,7 @@ namespace GameEditor
                     offsetX: 0, // Changed
                     offsetY: -100 
                 );
+                _horizontalScale.BackgroundColor = new Vector4(0.4f, 0.4f, 0.4f, 1.0f); // Added background color
                 _horizontalScale.OnValueChanged += (value) => Console.WriteLine($"Horizontal Scale Value: {value}");
 
                 // Vertical ScaleWidget
@@ -240,6 +241,7 @@ namespace GameEditor
                     offsetX: 0,  // Changed
                     offsetY: -75   
                 );
+                _verticalScale.BackgroundColor = new Vector4(0.4f, 0.4f, 0.4f, 1.0f); // Added background color
                 _verticalScale.OnValueChanged += (value) => Console.WriteLine($"Vertical Scale Value: {value}");
 
                 // Controlled ScaleWidget and its Label
@@ -268,6 +270,7 @@ namespace GameEditor
                     offsetX: 0, // Changed
                     offsetY: -130  
                 );
+                _controlledScale.BackgroundColor = new Vector4(0.4f, 0.4f, 0.4f, 1.0f); // Added background color
                 _controlledScale.OnValueChanged += (value) => {
                     if (_controlledScaleLabel != null)
                     {
