@@ -1,78 +1,89 @@
 using Xunit;
 using GameFramework;
-using GameFramework.Core;
+using GameFramework.Core; // For WorldObject
+using System.Drawing; // For Color
 
-namespace GameFramework.Tests
+namespace GameFramework.Tests.Components
 {
     public class SpriteComponentTests
     {
         [Fact]
-        public void SpriteComponent_Creation_ShouldInitializeProperties()
+        public void SpriteComponent_Creation_ShouldInitializeCorrectly()
         {
-            // Arrange
-            var spriteComponent = new SpriteComponent("test_sprite.png");
+            // Arrange & Act
+            var spriteComponent = new SpriteComponent("path/to/sprite.png", Color.White);
 
             // Assert
-            Assert.Equal("test_sprite.png", spriteComponent.SpritePath);
-            Assert.Equal(255, spriteComponent.Color.A);
-            Assert.Equal(255, spriteComponent.Color.R);
-            Assert.Equal(255, spriteComponent.Color.G);
-            Assert.Equal(255, spriteComponent.Color.B);
-            // Add assertions for other properties like Material when implemented
+            Assert.Equal("path/to/sprite.png", spriteComponent.SpritePath);
+            Assert.Equal(Color.White, spriteComponent.Color);
+            Assert.Null(spriteComponent.Parent);
         }
 
-        [Fact]
-        public void SpriteComponent_Creation_NullOrEmptyPath_ShouldThrowArgumentException()
+        [Theory]
+        [InlineData("")] // Null path handled by constructor allowing it
+        [InlineData(" ")]
+        public void SpriteComponent_Creation_WithInvalidPath_ShouldStillCreate(string invalidPath)
         {
+            // Arrange & Act
+            var spriteComponent = new SpriteComponent(invalidPath, Color.Red);
+
             // Assert
-            Assert.Throws<System.ArgumentException>(() => new SpriteComponent(null!));
-            Assert.Throws<System.ArgumentException>(() => new SpriteComponent(""));
-            Assert.Throws<System.ArgumentException>(() => new SpriteComponent(" "));
+            Assert.Equal(invalidPath, spriteComponent.SpritePath);
+            Assert.Equal(Color.Red, spriteComponent.Color);
+        }
+        
+        [Fact]
+        public void SpriteComponent_Creation_WithNullPath_ShouldStillCreate()
+        {
+            // Arrange & Act
+            var spriteComponent = new SpriteComponent(null!, Color.Red);
+
+            // Assert
+            Assert.Null(spriteComponent.SpritePath); // Or string.Empty depending on constructor logic for null
+            Assert.Equal(Color.Red, spriteComponent.Color);
         }
 
+
         [Fact]
-        public void SpriteComponent_OnAttach_SetsParent()
+        public void SpriteComponent_OnAttach_ShouldSetParent()
         {
             // Arrange
-            var spriteComponent = new SpriteComponent("test_sprite.png");
-            var worldObject = new WorldObject("TestObject", 0, 0, 0);
+            var spriteComponent = new SpriteComponent("path/to/sprite.png", Color.Blue);
+            var parentObject = new WorldObject("parentId", "ParentObj", 0,0,0); // Added name
 
             // Act
-            spriteComponent.Parent = worldObject;
-            spriteComponent.OnAttach();
+            parentObject.AddComponent(spriteComponent); 
 
             // Assert
-            Assert.Equal(worldObject, spriteComponent.Parent);
+            Assert.Same(parentObject, spriteComponent.Parent);
         }
 
         [Fact]
-        public void SpriteComponent_OnDetach_ClearsParent()
+        public void SpriteComponent_OnDetach_ShouldClearParent()
         {
             // Arrange
-            var spriteComponent = new SpriteComponent("test_sprite.png");
-            var worldObject = new WorldObject("TestObject", 0, 0, 0);
-            spriteComponent.Parent = worldObject;
-            spriteComponent.OnAttach();
+            var spriteComponent = new SpriteComponent("path/to/sprite.png", Color.Green);
+            var parentObject = new WorldObject("parentId", "ParentObj",0,0,0); // Added name
+            parentObject.AddComponent(spriteComponent);
 
             // Act
-            spriteComponent.OnDetach();
+            parentObject.RemoveComponent(spriteComponent); 
 
             // Assert
             Assert.Null(spriteComponent.Parent);
         }
 
         [Fact]
-        public void SpriteComponent_Update_DoesNotThrow()
+        public void SpriteComponent_Update_ShouldNotThrowException()
         {
             // Arrange
-            var spriteComponent = new SpriteComponent("test_sprite.png");
-            var worldObject = new WorldObject("TestObject", 0, 0, 0);
-            spriteComponent.Parent = worldObject;
-            spriteComponent.OnAttach();
+            var spriteComponent = new SpriteComponent("path/to/sprite.png", Color.Yellow);
+            var parentObject = new WorldObject("parentId", "ParentObj",0,0,0); // Added name
+            parentObject.AddComponent(spriteComponent);
 
             // Act & Assert
-            var exception = Record.Exception(() => spriteComponent.Update());
-            Assert.Null(exception);
+            Exception? ex = Record.Exception(() => spriteComponent.Update());
+            Assert.Null(ex);
         }
     }
 }

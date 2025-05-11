@@ -14,7 +14,7 @@ namespace GameFramework.Tests
             // Arrange
             var light = new Light(LightType.Point, Color.Red, new Vector3(1, 2, 3), 0.5f, true);
             var lightComponent = new LightComponent(light);
-            var worldObject = new WorldObject("TestLightObject", 0, 0, 0);
+            var worldObject = new WorldObject("TestLightObject", "TestObject", 0, 0, 0); // Corrected constructor to include Z coordinate
 
             // Act
             worldObject.AddComponent(lightComponent);
@@ -30,7 +30,7 @@ namespace GameFramework.Tests
             // Arrange
             var light = new Light(LightType.Directional, Color.Blue, Vector3.UnitY, 1.0f, true);
             var lightComponent = new LightComponent(light);
-            var worldObject = new WorldObject("ParentWorldObject", 1, 1, 1);
+            var worldObject = new WorldObject("ParentWorldObject", "TestObject", 1, 1, 1); // Corrected constructor to include Z coordinate
 
             // Act
             lightComponent.Parent = worldObject; // Simulate attachment by directly setting Parent for this test scope
@@ -47,7 +47,7 @@ namespace GameFramework.Tests
             // Arrange
             var light = new Light(LightType.Spot, Color.Green, new Vector3(5,5,5), 0.8f, false);
             var lightComponent = new LightComponent(light);
-            var worldObject = new WorldObject("DetachingObject", 0, 0, 0);
+            var worldObject = new WorldObject("DetachingObject", "TestObject", 0, 0, 0); // Corrected constructor to include Z coordinate
             worldObject.AddComponent(lightComponent);
 
             // Act
@@ -63,7 +63,7 @@ namespace GameFramework.Tests
             // Arrange
             var light = new Light(LightType.Point, Color.Yellow, Vector3.Zero, 1.0f, true);
             var lightComponent = new LightComponent(light);
-            var worldObject = new WorldObject("UpdatingObject", 0,0,0);
+            var worldObject = new WorldObject("UpdatingObject", "TestObject", 0, 0, 0); // Corrected constructor to include Z coordinate
             worldObject.AddComponent(lightComponent);
 
             // Act & Assert

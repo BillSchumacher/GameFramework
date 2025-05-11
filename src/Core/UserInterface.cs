@@ -2,16 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GameFramework.UI; // Added using directive for the new UI namespace
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace GameFramework
 {
     public class UserInterface
     {
-        private readonly List<Widget> _widgets;
+        public List<Widget> Widgets { get; set; } // Made settable
 
+        // Parameterless constructor for JSON deserialization
         public UserInterface()
         {
-            _widgets = new List<Widget>();
+            Widgets = new List<Widget>();
         }
 
         public void AddWidget(Widget widget)
@@ -20,47 +23,62 @@ namespace GameFramework
             {
                 throw new ArgumentNullException(nameof(widget), "Widget cannot be null.");
             }
-            if (_widgets.Any(w => w.Id == widget.Id))
+            if (Widgets.Any(w => w.Id == widget.Id))
             {
                 throw new ArgumentException($"A widget with ID '{widget.Id}' already exists.", nameof(widget));
             }
-            _widgets.Add(widget);
+            Widgets.Add(widget);
         }
 
-        public bool RemoveWidget(string widgetId)
+        public bool RemoveWidget(string widgetId) // Changed parameter from Widget to string ID for consistency
         {
             if (string.IsNullOrWhiteSpace(widgetId))
             {
                 throw new ArgumentException("Widget ID cannot be null or empty.", nameof(widgetId));
             }
-            var widgetToRemove = _widgets.FirstOrDefault(w => w.Id == widgetId);
+            var widgetToRemove = Widgets.FirstOrDefault(w => w.Id == widgetId);
             if (widgetToRemove != null)
             {
-                return _widgets.Remove(widgetToRemove);
+                return Widgets.Remove(widgetToRemove);
             }
             return false;
         }
 
-        public Widget? GetWidget(string widgetId)
+        public Widget? GetWidgetById(string id) // Renamed from GetWidget for clarity
         {
-            if (string.IsNullOrWhiteSpace(widgetId))
+            if (string.IsNullOrWhiteSpace(id))
             {
-                throw new ArgumentException("Widget ID cannot be null or empty.", nameof(widgetId));
+                throw new ArgumentException("ID cannot be null or whitespace.", nameof(id));
             }
-            return _widgets.FirstOrDefault(w => w.Id == widgetId);
+            return Widgets.FirstOrDefault(w => w.Id == id);
         }
 
         public IReadOnlyList<Widget> GetWidgets()
         {
-            return _widgets.AsReadOnly();
+            return Widgets.AsReadOnly();
         }
 
         public void Draw()
         {
-            foreach (var widget in _widgets)
+            foreach (var widget in Widgets)
             {
-                widget.Draw(); // Widget's Draw method will check IsVisible
+                widget.Draw(); // Now calls the virtual Draw method on the widget
             }
+        }
+
+        public string ToJson()
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            return JsonSerializer.Serialize(this, options);
+        }
+
+        public static UserInterface? FromJson(string json)
+        {
+            var options = new JsonSerializerOptions { };
+            return JsonSerializer.Deserialize<UserInterface>(json, options);
         }
     }
 }

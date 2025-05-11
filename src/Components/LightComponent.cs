@@ -1,7 +1,10 @@
 using System;
-using GameFramework.Core;
+using GameFramework.Core; // This directive should bring Light, LightType, and WorldObject into scope
+using System.Text.Json.Serialization;
+using System.Numerics;    // For Vector3, used by GameFramework.Core.Light constructor
+using System.Drawing;     // For Color, used by GameFramework.Core.Light constructor
 
-namespace GameFramework
+namespace GameFramework // Namespace of this LightComponent.cs file
 {
     /// <summary>
     /// Represents a light as a component that can be attached to a WorldObject.
@@ -11,17 +14,27 @@ namespace GameFramework
         /// <summary>
         /// Gets the Light object managed by this component.
         /// </summary>
-        public Light Light { get; private set; }
+        public Light Light { get; set; }
 
         /// <summary>
         /// Gets or sets the WorldObject this component is attached to.
         /// </summary>
-        public global::GameFramework.Core.WorldObject? Parent { get; set; } // Explicitly qualified with global::
+        [JsonIgnore] // Parent is handled by WorldObject deserialization
+        public WorldObject? Parent { get; set; }
+
+        /// <summary>
+        /// Parameterless constructor for JSON deserialization.
+        /// </summary>
+        public LightComponent()
+            : this(new Light(LightType.Point, Color.White, Vector3.Zero, 1.0f, true))
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LightComponent"/> class.
         /// </summary>
         /// <param name="light">The light to associate with this component.</param>
+        [JsonConstructor] // Hint for serializer
         public LightComponent(Light light)
         {
             Light = light ?? throw new ArgumentNullException(nameof(light));
@@ -33,7 +46,6 @@ namespace GameFramework
         public void OnAttach()
         {
             // Specific logic for when the light component is attached can go here.
-            // For example, registering the light with a rendering system if the Parent is active.
         }
 
         /// <summary>
@@ -42,8 +54,7 @@ namespace GameFramework
         public void OnDetach()
         {
             // Specific logic for when the light component is detached.
-            // For example, unregistering the light from a rendering system.
-            Parent = null; // Set Parent to null
+            Parent = null;
         }
 
         /// <summary>
@@ -52,14 +63,9 @@ namespace GameFramework
         public void Update()
         {
             // Light position could be updated relative to the Parent WorldObject if needed.
-            // For now, Light has its own Position property.
-            // If the Light's position should follow the WorldObject, that logic would go here.
-            if (Parent is not null && Light != null) // Used "is not null" for nullable reference type
+            if (Parent is not null && Light != null)
             {
-                // Example: Make the light follow the parent object. 
-                // This assumes Light.Position is in world space and Parent.X, Y, Z are also world space.
-                // If Light.Position should be an offset, this logic would need adjustment.
-                // Light.Position = new System.Numerics.Vector3(Parent.X, Parent.Y, Parent.Z);
+                // Example: Make the light follow the parent object.
             }
         }
     }

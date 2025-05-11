@@ -1,24 +1,33 @@
 using System;
 using System.Drawing; // Required for Color
 using GameFramework.Core; // Added using statement
+using System.Text.Json.Serialization; // Added for JsonConstructor
 
 namespace GameFramework
 {
     public class SpriteComponent : IComponent
     {
+        [JsonIgnore] // Parent is handled by WorldObject deserialization
         public global::GameFramework.Core.WorldObject? Parent { get; set; } // Explicitly qualified with global::
-        public string SpritePath { get; private set; }
-        public Color Color { get; set; } // Tint color for the sprite
+        public string SpritePath { get; set; } // Made settable
+        public Color Color { get; set; } // Tint color for the sprite, made settable
         // public Material Material { get; set; } // Future enhancement for custom shaders
 
-        public SpriteComponent(string spritePath)
+        // Parameterless constructor for JSON deserialization
+        public SpriteComponent() : this(string.Empty, Color.White)
         {
-            if (string.IsNullOrWhiteSpace(spritePath))
+        }
+
+        [JsonConstructor] // Hint for serializer
+        public SpriteComponent(string spritePath, Color color)
+        {
+            if (string.IsNullOrWhiteSpace(spritePath) && GetType() == typeof(SpriteComponent)) // Allow derived classes to have no path initially
             {
-                throw new ArgumentException("Sprite path cannot be null or whitespace.", nameof(spritePath));
+                // Consider if this should throw or be handled by a default spritePath
+                // For now, allowing empty for flexibility during deserialization if set later.
             }
             SpritePath = spritePath;
-            Color = Color.White; // Default to no tint
+            Color = color;
         }
 
         public void OnAttach()

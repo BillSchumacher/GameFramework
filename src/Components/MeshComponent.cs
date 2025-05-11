@@ -1,26 +1,34 @@
 using System.Collections.Generic;
 using System.Numerics;
 using GameFramework.Core; // Added using statement
+using System.Text.Json.Serialization; // Added for JsonConstructor
 
 namespace GameFramework
 {
     public class MeshComponent : IComponent
     {
+        [JsonIgnore] // Parent is handled by WorldObject deserialization
         public global::GameFramework.Core.WorldObject? Parent { get; set; } // Explicitly qualified with global::
-        public List<Vector3> Vertices { get; private set; }
-        public List<int> Indices { get; private set; }
-        public List<Vector2> UVs { get; private set; }
+        public List<Vector3> Vertices { get; set; } // Made settable
+        public List<int> Indices { get; set; }    // Made settable
+        public List<Vector2> UVs { get; set; }      // Made settable
 
-        public MeshComponent()
+        // Parameterless constructor for JSON deserialization
+        public MeshComponent() : this(new List<Vector3>(), new List<int>(), new List<Vector2>())
         {
-            Vertices = new List<Vector3>();
-            Indices = new List<int>();
-            UVs = new List<Vector2>();
+        }
+
+        [JsonConstructor] // Hint for serializer
+        public MeshComponent(List<Vector3> vertices, List<int> indices, List<Vector2> uvs)
+        {
+            Vertices = vertices ?? new List<Vector3>();
+            Indices = indices ?? new List<int>();
+            UVs = uvs ?? new List<Vector2>();
         }
 
         public void OnAttach()
         {
-            // Logic to handle attachment, e.g., registering with a rendering system
+            // Logic when attached to a WorldObject
             if (Parent is not null) // Used "is not null" for nullable reference type
             {
                 // Example: Parent.RegisterComponent(this);
@@ -43,13 +51,12 @@ namespace GameFramework
             // For a static mesh, this might be empty or handle animations
         }
 
-        // Method to load or define mesh data
         public void SetMesh(List<Vector3> vertices, List<int> indices, List<Vector2> uvs)
         {
-            Vertices = vertices ?? new List<Vector3>();
-            Indices = indices ?? new List<int>();
-            UVs = uvs ?? new List<Vector2>();
-            // Potentially trigger a refresh or update if the mesh is already in use
+            Vertices = vertices;
+            Indices = indices;
+            UVs = uvs;
+            // Potentially trigger an update or event here
         }
     }
 }

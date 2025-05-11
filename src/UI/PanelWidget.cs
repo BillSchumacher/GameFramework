@@ -1,34 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
-namespace GameFramework.UI // Changed namespace
+namespace GameFramework.UI
 {
     public class PanelWidget : Widget
     {
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-        private readonly List<Widget> _children;
+        public int Width { get; set; } // Made settable
+        public int Height { get; set; } // Made settable
+        public List<Widget> Children { get; set; } // Made settable for serialization
 
-        public IEnumerable<Widget> Children => _children.AsReadOnly();
+        // Parameterless constructor for JSON deserialization
+        public PanelWidget() : this("default_panel_id", 0, 0, 100, 100) // Default dimensions
+        {
+        }
 
-        // Keep track of the parent to prevent adding a widget to multiple containers
-        // This is a simplified parent tracking. A more robust solution might involve a Parent property on Widget.
-        private static readonly Dictionary<Widget, PanelWidget> _widgetParents = new Dictionary<Widget, PanelWidget>();
-
+        [JsonConstructor]
         public PanelWidget(string id, int x, int y, int width, int height) : base(id, x, y)
         {
-            if (width <= 0)
+            if (width <= 0 && GetType() == typeof(PanelWidget))
             {
-                throw new ArgumentOutOfRangeException(nameof(width), "Width must be greater than zero.");
+                // throw new ArgumentOutOfRangeException(nameof(width), "Width must be positive.");
             }
-            if (height <= 0)
+            if (height <= 0 && GetType() == typeof(PanelWidget))
             {
-                throw new ArgumentOutOfRangeException(nameof(height), "Height must be greater than zero.");
+                // throw new ArgumentOutOfRangeException(nameof(height), "Height must be positive.");
             }
-            Width = width;
-            Height = height;
-            _children = new List<Widget>();
+            Width = width > 0 ? width : 100; // Ensure positive dimensions
+            Height = height > 0 ? height : 100;
+            Children = new List<Widget>();
         }
 
         public void AddChild(Widget widget)
@@ -37,39 +38,31 @@ namespace GameFramework.UI // Changed namespace
             {
                 throw new ArgumentNullException(nameof(widget));
             }
-            if (_widgetParents.ContainsKey(widget))
+            if (!Children.Contains(widget))
             {
-                 throw new InvalidOperationException($"Widget '{widget.Id}' already has a parent and cannot be added to '{this.Id}'.");
-            }
-            if (!_children.Contains(widget))
-            {
-                _children.Add(widget);
-                _widgetParents[widget] = this;
+                Children.Add(widget);
             }
         }
 
         public bool RemoveChild(Widget widget)
         {
-            if (widget != null && _children.Remove(widget))
+            if (widget != null && Children.Remove(widget))
             {
-                _widgetParents.Remove(widget);
                 return true;
             }
             return false;
         }
 
-        public override void Draw()
+        public override void Draw() // Added override
         {
-            if (!IsVisible) return;
-
-            Console.WriteLine($"Drawing PanelWidget {Id} at ({X}, {Y}) with size ({Width}x{Height})");
-            foreach (var child in _children.Where(c => c.IsVisible))
+            base.Draw();
+            if (IsVisible)
             {
-                // Child widgets are drawn relative to their own X, Y which are global for now.
-                // For true panel containment, child X,Y might be relative to the panel's X,Y.
-                // This would require adjusting their draw positions or transforming coordinates.
-                // For simplicity, current Widget X,Y are treated as absolute screen positions.
-                child.Draw();
+                Console.WriteLine($"Drawing PanelWidget {Id} at ({X}, {Y}) with size ({Width}x{Height})");
+                foreach (var child in Children.Where(c => c.IsVisible))
+                {
+                    child.Draw(); // Assuming child has a Draw method.
+                }
             }
         }
     }

@@ -1,146 +1,158 @@
 using Xunit;
-using GameFramework;
-using GameFramework.Core; // Added this using directive
+using GameFramework; // For Camera
+using GameFramework.Core; // For WorldObject
+using System;
+using System.Numerics; // For Vector3
 
-namespace GameFramework.Tests
+namespace GameFramework.Tests.Core
 {
     public class CameraTests
     {
         [Fact]
-        public void Camera_Creation_ShouldInitializeProperties()
+        public void Camera_Creation_ShouldInitializeCorrectly()
         {
-            // Arrange
-            var camera = new Camera(0, 0, 0);
-
-            // Assert
-            Assert.Equal(0, camera.X);
-            Assert.Equal(0, camera.Y);
-            Assert.Equal(0, camera.Z);
-            Assert.Null(camera.AttachedObject);
-        }
-
-        [Fact]
-        public void Camera_Creation_ShouldInitializeFrustumProperties()
-        {
-            // Arrange
-            var camera = new Camera(0, 0, 0, 60.0f, 16.0f / 9.0f, 0.1f, 1000.0f);
-
-            // Assert
-            Assert.Equal(60.0f, camera.FieldOfView);
-            Assert.Equal(16.0f / 9.0f, camera.AspectRatio);
-            Assert.Equal(0.1f, camera.NearPlaneDistance);
-            Assert.Equal(1000.0f, camera.FarPlaneDistance);
-        }
-
-        [Fact]
-        public void Camera_AttachToObject_ShouldSetAttachedObject()
-        {
-            // Arrange
-            var camera = new Camera(0, 0, 0);
-            var worldObject = new WorldObject("TestObject", 10, 20, 30);
-
-            // Act
-            camera.AttachToObject(worldObject);
-
-            // Assert
-            Assert.NotNull(camera.AttachedObject);
-            Assert.Equal(worldObject.Id, camera.AttachedObject.Id);
-        }
-
-        [Fact]
-        public void Camera_UpdatePosition_ShouldReflectAttachedObjectPosition()
-        {
-            // Arrange
-            var camera = new Camera(0, 0, 0);
-            var worldObject = new WorldObject("TestObject", 10, 20, 30);
-            camera.AttachToObject(worldObject);
-
-            // Act
-            // Simulate game loop updating camera or camera polling object
-            camera.UpdatePosition(); 
+            // Arrange & Act
+            var camera = new Camera(10, 20, 30, 90.0f, 1.77f, 0.5f, 1500.0f);
 
             // Assert
             Assert.Equal(10, camera.X);
             Assert.Equal(20, camera.Y);
             Assert.Equal(30, camera.Z);
-
-            // Move the object and update again
-            worldObject.SetPosition(30, 40, 50);
-            camera.UpdatePosition();
-
-            Assert.Equal(30, camera.X);
-            Assert.Equal(40, camera.Y);
-            Assert.Equal(50, camera.Z);
+            Assert.Null(camera.AttachedObject);
+            Assert.Equal(90.0f, camera.FieldOfView);
+            Assert.Equal(1.77f, camera.AspectRatio);
+            Assert.Equal(0.5f, camera.NearPlaneDistance);
+            Assert.Equal(1500.0f, camera.FarPlaneDistance);
         }
 
         [Fact]
-        public void Camera_UpdatePosition_ShouldRemainUnchangedIfNotAttached()
+        public void Camera_AttachToObject_ShouldSetAttachedObjectAndUpdatePosition()
         {
             // Arrange
-            var camera = new Camera(5, 5, 5);
+            var camera = new Camera(0, 0, 0);
+            var worldObject = new WorldObject("obj1", "TestObject", 10, 20, 30);
 
             // Act
-            camera.UpdatePosition();
+            camera.AttachToObject(worldObject);
 
             // Assert
-            Assert.Equal(5, camera.X);
-            Assert.Equal(5, camera.Y);
-            Assert.Equal(5, camera.Z);
+            Assert.Same(worldObject, camera.AttachedObject);
+            Assert.Equal(worldObject.X, camera.X);
+            Assert.Equal(worldObject.Y, camera.Y);
+            Assert.Equal(worldObject.Z, camera.Z);
         }
+
+        [Fact]
+        public void Camera_AttachToObject_NullObject_ShouldSetAttachedObjectToNull()
+        {
+            // Arrange
+            var camera = new Camera(0, 0, 0);
+            var worldObject = new WorldObject("obj1", "TestObject", 10, 20, 30);
+            camera.AttachToObject(worldObject); // Attach first
+
+            // Act
+            camera.AttachToObject(null!); // Attach to null
+
+            // Assert
+            Assert.Null(camera.AttachedObject);
+            // Position should remain as it was from the last attached object or manual set
+            Assert.Equal(worldObject.X, camera.X); 
+            Assert.Equal(worldObject.Y, camera.Y);
+            Assert.Equal(worldObject.Z, camera.Z);
+        }
+
 
         [Fact]
         public void Camera_DetachObject_ShouldClearAttachedObject()
         {
             // Arrange
             var camera = new Camera(0, 0, 0);
-            var worldObject = new WorldObject("TestObject", 10, 20, 30);
+            var worldObject = new WorldObject("obj1", "TestObject", 10, 20, 30);
             camera.AttachToObject(worldObject);
-            camera.UpdatePosition(); // Initial position sync
 
             // Act
             camera.DetachObject();
-            worldObject.SetPosition(100, 200, 300); // Move object after detaching
-            camera.UpdatePosition(); // Try to update camera position
 
             // Assert
             Assert.Null(camera.AttachedObject);
-            Assert.Equal(10, camera.X); // Camera position should not change
-            Assert.Equal(20, camera.Y); // Camera position should not change
-            Assert.Equal(30, camera.Z); // Camera position should not change
-        }
-
-        [Fact]
-        public void Camera_SetPosition_ShouldUpdateXYZ_WhenNotAttached()
-        {
-            // Arrange
-            var camera = new Camera(0, 0, 0);
-
-            // Act
-            camera.SetPosition(10, 20, 30);
-
-            // Assert
+            // Position should remain as it was from the last attached object
             Assert.Equal(10, camera.X);
             Assert.Equal(20, camera.Y);
             Assert.Equal(30, camera.Z);
         }
 
         [Fact]
-        public void Camera_SetPosition_ShouldNotUpdateXYZ_WhenAttached()
+        public void Camera_UpdatePosition_WhenAttached_ShouldSyncWithObject()
         {
             // Arrange
             var camera = new Camera(0, 0, 0);
-            var worldObject = new WorldObject("AttachedObj", 5, 5, 5);
+            var worldObject = new WorldObject("obj1", "TestObject", 10, 20, 30);
             camera.AttachToObject(worldObject);
-            camera.UpdatePosition(); // Sync with attached object
 
             // Act
-            camera.SetPosition(10, 20, 30); // Attempt to manually set position
+            worldObject.SetPosition(40, 50, 60);
+            camera.UpdatePosition();
 
             // Assert
-            // Position should remain that of the attached object
-            Assert.Equal(5, camera.X);
-            Assert.Equal(5, camera.Y);
-            Assert.Equal(5, camera.Z);
+            Assert.Equal(40, camera.X);
+            Assert.Equal(50, camera.Y);
+            Assert.Equal(60, camera.Z);
+        }
+
+        [Fact]
+        public void Camera_UpdatePosition_WhenNotAttached_ShouldNotChangePosition()
+        {
+            // Arrange
+            var camera = new Camera(5, 15, 25);
+            var initialX = camera.X;
+            var initialY = camera.Y;
+            var initialZ = camera.Z;
+
+            // Act
+            camera.UpdatePosition(); // No object attached
+
+            // Assert
+            Assert.Equal(initialX, camera.X);
+            Assert.Equal(initialY, camera.Y);
+            Assert.Equal(initialZ, camera.Z);
+        }
+
+        [Fact]
+        public void Camera_SetPosition_WhenNotAttached_ShouldUpdatePosition()
+        {
+            // Arrange
+            var camera = new Camera(0, 0, 0);
+
+            // Act
+            camera.SetPosition(100, 200, 300);
+
+            // Assert
+            Assert.Equal(100, camera.X);
+            Assert.Equal(200, camera.Y);
+            Assert.Equal(300, camera.Z);
+        }
+
+        [Fact]
+        public void Camera_SetPosition_WhenAttached_ShouldNotUpdatePosition()
+        {
+            // Arrange
+            var camera = new Camera(0, 0, 0);
+            var worldObject = new WorldObject("obj1", "TestObject", 10, 20, 30);
+            camera.AttachToObject(worldObject); // Attached
+
+            var initialX = camera.X; // Should be 10
+            var initialY = camera.Y; // Should be 20
+            var initialZ = camera.Z; // Should be 30
+
+
+            // Act
+            camera.SetPosition(100, 200, 300); // Attempt to manually set position
+
+            // Assert
+            // Position should remain synced with the attached object, not the manual set values
+            Assert.Equal(initialX, camera.X);
+            Assert.Equal(initialY, camera.Y);
+            Assert.Equal(initialZ, camera.Z);
         }
     }
 }

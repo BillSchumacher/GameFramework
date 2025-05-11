@@ -32,8 +32,9 @@ public class Program // Ensure Program is public for WebApplicationFactory
         {
             var world = scope.ServiceProvider.GetRequiredService<World>();
             // Create a new player and add it to the world
-            var player = new Player("Player1"); // Added name argument, assuming PlayerType defaults
-            world.AddObject(player);
+            // Corrected Player constructor call to include id, name, and score
+            var player = new Player("player1_id", "Player1", 0); 
+            world.AddPlayer(player); // Assuming AddPlayer is the correct method, or AddObject if Player is a WorldObject
         }
     }
 }

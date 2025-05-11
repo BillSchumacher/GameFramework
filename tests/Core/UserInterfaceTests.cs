@@ -109,7 +109,7 @@ namespace GameFramework.Tests
             ui.AddWidget(widget);
 
             // Act
-            var foundWidget = ui.GetWidget("testWidget");
+            var foundWidget = ui.GetWidgetById("testWidget"); // Renamed from GetWidget
 
             // Assert
             Assert.NotNull(foundWidget);
@@ -123,7 +123,7 @@ namespace GameFramework.Tests
             var ui = new UserInterface();
 
             // Act
-            var foundWidget = ui.GetWidget("nonExistentWidget");
+            var foundWidget = ui.GetWidgetById("nonExistentWidget"); // Renamed from GetWidget
 
             // Assert
             Assert.Null(foundWidget);
@@ -136,9 +136,9 @@ namespace GameFramework.Tests
             var ui = new UserInterface();
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => ui.GetWidget(null!));
-            Assert.Throws<ArgumentException>(() => ui.GetWidget(""));
-            Assert.Throws<ArgumentException>(() => ui.GetWidget("   "));
+            Assert.Throws<ArgumentException>(() => ui.GetWidgetById(null!)); // Renamed from GetWidget
+            Assert.Throws<ArgumentException>(() => ui.GetWidgetById("")); // Renamed from GetWidget
+            Assert.Throws<ArgumentException>(() => ui.GetWidgetById("   ")); // Renamed from GetWidget
         }
 
         // Mocking Draw method for testing purposes
@@ -146,9 +146,10 @@ namespace GameFramework.Tests
         {
             public int DrawCallCount { get; private set; }
             public TestWidget(string id, int x, int y) : base(id, x, y) { }
-            public override void Draw()
+            public override void Draw() // Added override
             {
-                if (IsVisible)
+                base.Draw(); // Call base.Draw() to respect IsVisible or other base logic
+                if (IsVisible) // Redundant if base.Draw() handles IsVisible, but good for clarity here
                 {
                     DrawCallCount++;
                 }

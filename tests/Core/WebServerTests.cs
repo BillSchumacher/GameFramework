@@ -25,7 +25,7 @@ namespace GameFramework.Tests
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             Assert.Contains("worldObjectsCount", content);
-            Assert.Contains("players", content);
+            Assert.Contains("playerCount", content); // Changed from "players"
         }
     }
 }

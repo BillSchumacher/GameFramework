@@ -36,11 +36,11 @@ namespace GameFramework
                 endpoints.MapGet("/game", async context =>
                 {
                     var world = context.RequestServices.GetRequiredService<World>();
-                    var players = world.GetObjects().OfType<Player>().Select(p => new { p.Name, p.Score }).ToList();
                     var gameData = new 
                     {
-                        worldObjectsCount = world.GetObjects().Count(),
-                        players = players
+                        playerCount = world.Players.Count,
+                        worldObjectsCount = world.Objects.Count, // Changed from objectCount
+                        firstObjectName = world.Objects.FirstOrDefault()?.Name ?? "N/A"
                     };
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync(JsonSerializer.Serialize(gameData));

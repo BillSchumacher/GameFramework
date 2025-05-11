@@ -1,27 +1,33 @@
 using System;
+using System.Text.Json.Serialization;
 
-namespace GameFramework.UI // Changed namespace
+namespace GameFramework.UI
 {
     public class TextFieldWidget : Widget
     {
-        public string Text { get; private set; }
-        public int MaxLength { get; private set; }
+        public string Text { get; set; } // Made settable
+        public int MaxLength { get; set; } // Made settable
         public bool IsReadOnly { get; set; }
-        public event Action<string>? OnTextChanged; // Made nullable
+        public string Placeholder { get; set; } // Added Placeholder property
+        public event Action<string>? OnTextChanged;
 
-        public TextFieldWidget(string id, int x, int y, string initialText = "", int maxLength = 255) : base(id, x, y)
+        // Parameterless constructor for JSON deserialization
+        public TextFieldWidget() : this("default_textfield_id", 0, 0, string.Empty, 100, "Enter text...") // Default MaxLength to a positive value
         {
-            if (maxLength <= 0)
+        }
+
+        [JsonConstructor]
+        public TextFieldWidget(string id, int x, int y, string? initialText = null, int maxLength = 0, string placeholder = "Enter text...") : base(id, x, y)
+        {
+            if (maxLength <= 0 && GetType() == typeof(TextFieldWidget)) // Allow derived types to bypass, or set a default positive value
             {
-                throw new ArgumentOutOfRangeException(nameof(maxLength), "Max length must be greater than zero.");
+                // throw new ArgumentOutOfRangeException(nameof(maxLength), "MaxLength must be positive.");
+                // For deserialization, allow 0 or negative, or ensure a valid default is set.
+                // Here, the parameterless constructor sets a valid default.
             }
-            MaxLength = maxLength;
             Text = initialText ?? string.Empty;
-            if (Text.Length > MaxLength)
-            {
-                Text = Text.Substring(0, MaxLength);
-            }
-            IsReadOnly = false;
+            MaxLength = maxLength > 0 ? maxLength : 100; // Ensure MaxLength is positive after construction
+            Placeholder = placeholder; // Initialize Placeholder
         }
 
         public void SetText(string newText)
@@ -41,11 +47,12 @@ namespace GameFramework.UI // Changed namespace
             }
         }
 
-        public override void Draw()
+        public override void Draw() // Added override
         {
+            base.Draw();
             if (IsVisible)
             {
-                Console.WriteLine($"Drawing TextFieldWidget {Id} with text \"{Text}\" at ({X}, {Y})");
+                Console.WriteLine($"Drawing TextField: {(string.IsNullOrEmpty(Text) ? Placeholder : Text)} at ({X}, {Y})");
             }
         }
     }

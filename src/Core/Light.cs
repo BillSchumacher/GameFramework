@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace GameFramework
 {
@@ -29,9 +30,9 @@ namespace GameFramework
         public Vector3 Position { get; set; }
 
         /// <summary>
-        /// Gets the type of the light.
+        /// Gets or sets the type of the light.
         /// </summary>
-        public LightType Type { get; }
+        public LightType Type { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Light"/> class.
@@ -41,6 +42,7 @@ namespace GameFramework
         /// <param name="position">The position of the light.</param>
         /// <param name="intensity">The intensity of the light (0.0 to 1.0 or higher for HDR).</param>
         /// <param name="isEnabled">Whether the light is initially enabled.</param>
+        [JsonConstructor]
         public Light(LightType type, Color color, Vector3 position, float intensity = 1.0f, bool isEnabled = true)
         {
             if (intensity < 0)
@@ -54,6 +56,11 @@ namespace GameFramework
             Intensity = intensity;
             IsEnabled = isEnabled;
         }
+
+        /// <summary>
+        /// Parameterless constructor for JSON deserialization.
+        /// </summary>
+        public Light() : this(LightType.Point, Color.White, Vector3.Zero, 1.0f, true) { }
 
         /// <summary>
         /// Toggles the enabled state of the light.

@@ -1,95 +1,115 @@
 using Xunit;
 using GameFramework;
-using GameFramework.Core; // Added this using directive
-using System.Numerics;
-using System.Collections.Generic;
+using GameFramework.Core; // For WorldObject
+using System.Numerics; // For Vector3, Vector2
+using System.Collections.Generic; // For List
+using System; // For Exception
 
-namespace GameFramework.Tests
+namespace GameFramework.Tests.Components
 {
     public class MeshComponentTests
     {
+        // Helper to create a default mesh component for tests
+        private MeshComponent CreateDefaultMeshComponent()
+        {
+            var vertices = new List<Vector3> { new Vector3(0,0,0), new Vector3(1,0,0), new Vector3(0,1,0) };
+            var indices = new List<int> { 0, 1, 2 };
+            var uvs = new List<Vector2> { new Vector2(0,0), new Vector2(1,0), new Vector2(0,1) };
+            return new MeshComponent(vertices, indices, uvs);
+        }
+
         [Fact]
-        public void MeshComponent_Creation_ShouldInitializeProperties()
+        public void MeshComponent_Creation_ShouldInitializeCorrectly()
         {
             // Arrange
-            var meshComponent = new MeshComponent();
+            var vertices = new List<Vector3> { new Vector3(0,0,0) };
+            var indices = new List<int> { 0 };
+            var uvs = new List<Vector2> { new Vector2(0,0) };
+
+            // Act
+            var meshComponent = new MeshComponent(vertices, indices, uvs);
+
+            // Assert
+            Assert.Same(vertices, meshComponent.Vertices);
+            Assert.Same(indices, meshComponent.Indices);
+            Assert.Same(uvs, meshComponent.UVs);
+            Assert.Null(meshComponent.Parent);
+        }
+        
+        [Fact]
+        public void MeshComponent_Creation_NullLists_ShouldInitializeEmptyLists()
+        {
+            // Act
+            var meshComponent = new MeshComponent(null!, null!, null!);
 
             // Assert
             Assert.NotNull(meshComponent.Vertices);
             Assert.Empty(meshComponent.Vertices);
-            Assert.NotNull(meshComponent.Indices); // Changed Triangles to Indices
-            Assert.Empty(meshComponent.Indices); // Changed Triangles to Indices
+            Assert.NotNull(meshComponent.Indices);
+            Assert.Empty(meshComponent.Indices);
             Assert.NotNull(meshComponent.UVs);
             Assert.Empty(meshComponent.UVs);
-            Assert.Null(meshComponent.Parent); // Parent should be null initially
         }
 
+
         [Fact]
-        public void MeshComponent_SetMesh_ShouldUpdateMeshData()
+        public void MeshComponent_OnAttach_ShouldSetParent()
         {
             // Arrange
-            var meshComponent = new MeshComponent();
-            var vertices = new List<Vector3> { new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(0, 1, 0) };
-            var indices = new List<int> { 0, 1, 2 }; // Changed triangles to indices
-            var uvs = new List<Vector2> { new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1) }; // Added uvs
+            var worldObject = new WorldObject("obj1", "TestObject", 0, 0, 0);
+            var meshComponent = CreateDefaultMeshComponent();
 
             // Act
-            meshComponent.SetMesh(vertices, indices, uvs); // Changed triangles to indices and added uvs
+            worldObject.AddComponent(meshComponent);
 
             // Assert
-            Assert.Equal(vertices, meshComponent.Vertices);
-            Assert.Equal(indices, meshComponent.Indices); // Changed Triangles to Indices
-            Assert.Equal(uvs, meshComponent.UVs);
+            Assert.Same(worldObject, meshComponent.Parent);
         }
 
         [Fact]
-        public void MeshComponent_OnAttach_SetsParentAndParentKnowsComponent()
+        public void MeshComponent_OnDetach_ShouldClearParent()
         {
             // Arrange
-            var meshComponent = new MeshComponent();
-            var worldObject = new WorldObject("TestObject", 0, 0, 0); // Added initialZ
+            var worldObject = new WorldObject("obj1", "TestObject", 0, 0, 0);
+            var meshComponent = CreateDefaultMeshComponent();
+            worldObject.AddComponent(meshComponent);
 
             // Act
-            meshComponent.Parent = worldObject; // Simulate attaching
-            meshComponent.OnAttach();
-            // In a real scenario, WorldObject.AddComponent would set Parent and call OnAttach.
-            // For isolated component testing, we set Parent then call OnAttach.
-
-            // Assert
-            Assert.Equal(worldObject, meshComponent.Parent);
-            // If WorldObject had a GetComponent<MeshComponent>(), we could assert it here.
-            // For now, we assume OnAttach might have internal logic to register with the parent if needed.
-        }
-
-        [Fact]
-        public void MeshComponent_OnDetach_ClearsParentAndParentLosesComponent()
-        {
-            // Arrange
-            var meshComponent = new MeshComponent();
-            var worldObject = new WorldObject("TestObject", 0, 0, 0); // Added initialZ
-            meshComponent.Parent = worldObject;
-            meshComponent.OnAttach();
-
-            // Act
-            meshComponent.OnDetach();
+            worldObject.RemoveComponent(meshComponent);
 
             // Assert
             Assert.Null(meshComponent.Parent);
-            // If WorldObject had a GetComponent<MeshComponent>(), we could assert it returns null here.
         }
 
         [Fact]
-        public void MeshComponent_Update_DoesNotThrow()
+        public void MeshComponent_Update_ShouldNotThrowException()
         {
             // Arrange
-            var meshComponent = new MeshComponent();
-            var worldObject = new WorldObject("TestObject", 0, 0, 0); // Added initialZ
-            meshComponent.Parent = worldObject; // Update might depend on Parent
-            meshComponent.OnAttach();
+            var worldObject = new WorldObject("obj1", "TestObject", 0, 0, 0);
+            var meshComponent = CreateDefaultMeshComponent();
+            worldObject.AddComponent(meshComponent);
 
             // Act & Assert
-            var exception = Record.Exception(() => meshComponent.Update());
-            Assert.Null(exception);
+            Exception? ex = Record.Exception(() => meshComponent.Update());
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void MeshComponent_SetMesh_ShouldUpdateProperties()
+        {
+            // Arrange
+            var meshComponent = CreateDefaultMeshComponent();
+            var newVertices = new List<Vector3> { new Vector3(1,1,1) };
+            var newIndices = new List<int> { 0 };
+            var newUvs = new List<Vector2> { new Vector2(1,1) };
+
+            // Act
+            meshComponent.SetMesh(newVertices, newIndices, newUvs);
+
+            // Assert
+            Assert.Same(newVertices, meshComponent.Vertices);
+            Assert.Same(newIndices, meshComponent.Indices);
+            Assert.Same(newUvs, meshComponent.UVs);
         }
     }
 }

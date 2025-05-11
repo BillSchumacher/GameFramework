@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic; // Required for List
 using System.Linq; // Required for LastOrDefault
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
-namespace GameFramework.Core // Changed from GameFramework
+namespace GameFramework.Core
 {
-    public class Player : WorldObject // Added inheritance from WorldObject
+    public class Player : WorldObject // Inherit from WorldObject to reuse Id, Name, serialization logic
     {
-        // public string Name { get; private set; } // Removed as it's inherited from WorldObject
-        public int Score { get; set; }
+        public int Score { get; set; } // Made settable
         public PlayerType Type { get; private set; } // Added PlayerType property
         public string LastAction => actionHistory.LastOrDefault()?.Action.Name ?? string.Empty; // Updated to get Name from BaseAction
         public WorldObject? ControlledObject { get; private set; } // Nullable WorldObject
@@ -15,17 +16,44 @@ namespace GameFramework.Core // Changed from GameFramework
 
         private readonly List<PlayerAction> actionHistory; // New field for action history
 
-        // Updated constructor to call base constructor and use inherited Name
-        public Player(string name, PlayerType type = PlayerType.Local, int initialX = 0, int initialY = 0, int initialZ = 0) 
-            : base(name, initialX, initialY, initialZ) // Call base constructor
+        // Parameterless constructor for JSON deserialization
+        public Player() : this("default_player_id", "DefaultPlayerName", 0)
+        {
+        }
+
+        [JsonConstructor]
+        public Player(string id, string name, int score) : base(id, name, 0, 0, 0) // Call base constructor
         {
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentException("Player name cannot be null or empty.", nameof(name));
             }
-            // Name is set by base constructor
-            Type = type;
+            Score = score;
+            Type = PlayerType.Local; // Default type
             actionHistory = new List<PlayerAction>();
+        }
+
+        public void AddScore(int amount) // New method
+        {
+            Score += amount;
+        }
+
+        public void SetPlayerType(PlayerType type) // New method
+        {
+            Type = type;
+        }
+
+        public void RecordAction(BaseAction action, int frameNumber) // New method for testing
+        {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+            if (frameNumber < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(frameNumber), "Frame number cannot be negative.");
+            }
+            actionHistory.Add(new PlayerAction(action, frameNumber));
         }
 
         public void AssignControl(WorldObject worldObject)
@@ -55,47 +83,38 @@ namespace GameFramework.Core // Changed from GameFramework
         {
             if (string.IsNullOrWhiteSpace(input))
             {
-                // Optional: Decide if empty input should be an error or ignored
-                // For now, let's assume empty/whitespace input is not a valid action to record
                 Console.WriteLine($"{Name} received empty input at frame {frameNumber}. No action recorded.");
                 return;
             }
-            // Create a concrete action from the input string
             var concreteAction = new StringInputAction(input);
             var playerAction = new PlayerAction(concreteAction, frameNumber); // Pass the concrete action
             actionHistory.Add(playerAction);
-            // The LastAction property will now automatically reflect this new action.
             Console.WriteLine($"{Name} processed input: {input} at frame {frameNumber}. Last action: {LastAction}");
 
-            // If controlling an object, interpret input to manipulate the object
             if (ControlledObject != null)
             {
-                // Simple example: "move_right" increases X, "move_left" decreases X
-                // "move_up" increases Y, "move_down" decreases Y
-                // This can be expanded with more complex input parsing and actions
                 int currentX = ControlledObject.X;
                 int currentY = ControlledObject.Y;
-                int currentZ = ControlledObject.Z; // Get current Z
+                int currentZ = ControlledObject.Z;
 
                 switch (input.ToLower())
                 {
                     case "move_right":
-                        ControlledObject.SetPosition(currentX + 1, currentY, currentZ); // Pass Z
-                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})"); // Log Z
+                        ControlledObject.SetPosition(currentX + 1, currentY, currentZ);
+                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})");
                         break;
                     case "move_left":
-                        ControlledObject.SetPosition(currentX - 1, currentY, currentZ); // Pass Z
-                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})"); // Log Z
+                        ControlledObject.SetPosition(currentX - 1, currentY, currentZ);
+                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})");
                         break;
                     case "move_up":
-                        ControlledObject.SetPosition(currentX, currentY + 1, currentZ); // Pass Z
-                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})"); // Log Z
+                        ControlledObject.SetPosition(currentX, currentY + 1, currentZ);
+                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})");
                         break;
                     case "move_down":
-                        ControlledObject.SetPosition(currentX, currentY - 1, currentZ); // Pass Z
-                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})"); // Log Z
+                        ControlledObject.SetPosition(currentX, currentY - 1, currentZ);
+                        Console.WriteLine($"{Name} moved {ControlledObject.Name} to ({ControlledObject.X}, {ControlledObject.Y}, {ControlledObject.Z})");
                         break;
-                        // Add more cases for other actions like "jump", "interact", etc.
                 }
             }
         }
@@ -127,6 +146,25 @@ namespace GameFramework.Core // Changed from GameFramework
             Camera = camera;
             Console.WriteLine($"{Name}'s camera set.");
         }
-    }
 
+        public new string ToJson() // 'new' keyword to hide base.ToJson if signature is same
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            return JsonSerializer.Serialize(this, options);
+        }
+
+        public static new Player? FromJson(string json) // 'new' keyword
+        {
+            var options = new JsonSerializerOptions { };
+            var player = JsonSerializer.Deserialize<Player>(json, options);
+            if (player != null)
+            {
+                foreach (var component in player.Components) // Components from WorldObject
+                {
+                    component.Parent = player;
+                }
+            }
+            return player;
+        }
+    }
 }

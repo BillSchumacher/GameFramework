@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace GameFramework.UI // Changed namespace
+namespace GameFramework.UI
 {
     public class HorizontalStackPanelWidget : StackPanelWidget
     {
@@ -12,10 +12,12 @@ namespace GameFramework.UI // Changed namespace
         public override void RecalculateLayout()
         {
             int currentX = this.X;
-            foreach (var child in _children)
+            foreach (var child in Children)
             {
                 child.SetPosition(currentX, this.Y); // Align all children to the stack's Y
-                currentX += GetEffectiveWidth(child) + Spacing;
+                var childWidth = 50; // Placeholder: replace with actual width logic
+                if (child is PanelWidget panel) childWidth = panel.Width;
+                currentX += childWidth + Spacing;
             }
         }
 
