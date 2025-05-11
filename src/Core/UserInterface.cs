@@ -68,6 +68,14 @@ namespace GameFramework
             }
         }
 
+        public void Update(float deltaTime)
+        {
+            foreach (var widget in Widgets.Where(w => w.IsVisible))
+            {
+                widget.Update(deltaTime);
+            }
+        }
+
         public void HandleMouseDown(float mouseX, float mouseY, MouseButton button)
         {
             // Iterate in reverse order so the top-most widget gets the event first.

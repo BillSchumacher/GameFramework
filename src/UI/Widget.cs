@@ -196,6 +196,12 @@ namespace GameFramework.UI
             }
         }
 
+        public virtual void Update(float deltaTime)
+        {
+            // Base widgets may not need to do anything on update.
+            // Derived widgets can override this method to implement specific update logic.
+        }
+
         public void Show()
         {
             IsVisible = true;

@@ -8,7 +8,9 @@ using GameFramework.Rendering; // Added for ShaderHelper (if FontRenderer relies
 using System;
 using System.IO; // Added for Path.Combine and AppContext.BaseDirectory
 using GameFramework; // Added for UserInterface
+using GameFramework.Core; // Added for Profiler
 using System.Collections.Generic; // Added for List<Vector3>
+using System.Text; // Added for StringBuilder
 
 namespace GameEditor
 {
@@ -26,6 +28,7 @@ namespace GameEditor
         private LabelWidget? _typewriterEffectLabel;
         private LabelWidget? _rainbowEffectLabel; // Added for character colors
         private LabelWidget? _fpsLabel;
+        private LabelWidget? _profilerLabel; // Added for displaying profiler information
         private ButtonWidget? _sampleButton; // Added for the button
         private ScaleWidget? _horizontalScale;
         private ScaleWidget? _verticalScale;
@@ -44,15 +47,19 @@ namespace GameEditor
         private ScaleWidget? _scaleWithButton;
         private ButtonWidget? _scalableButton;
 
+        private Profiler _profiler; // Added Profiler instance
+
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
             _userInterface = new UserInterface();
+            _profiler = new Profiler(); // Initialize Profiler
         }
 
         protected override void OnLoad()
         {
             base.OnLoad();
+            _profiler.Start("OnLoad"); // Profile OnLoad
             GL.ClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
             // Initialize projection matrix
@@ -75,6 +82,7 @@ namespace GameEditor
 
             try
             {
+                _profiler.Start("UIInitialization"); // Profile UI Initialization
                 // Initialize LabelWidgets with anchoring
                 _helloWorldLabel = new LabelWidget(
                     id: "helloLabel",
@@ -191,6 +199,19 @@ namespace GameEditor
                     anchor: AnchorPoint.TopRight,
                     offsetX: -10, // Negative offset to come in from the right
                     offsetY: 10
+                );
+
+                // Profiler display label
+                _profilerLabel = new LabelWidget(
+                    id: "profilerLabel",
+                    x: 0, y: 0,
+                    text: "Profiler:",
+                    fontName: FontNameForUI,
+                    fontSize: (int)(DefaultFontSize * 0.9f), // Slightly smaller font
+                    textColor: new Vector3(0.9f, 0.9f, 0.7f), // Light yellow-ish
+                    anchor: AnchorPoint.BottomLeft,
+                    offsetX: 10,
+                    offsetY: -10 // Position above bottom edge
                 );
 
                 // Initialize ButtonWidget with anchoring
@@ -416,6 +437,7 @@ namespace GameEditor
                 _userInterface.AddWidget(_typewriterEffectLabel);
                 _userInterface.AddWidget(_rainbowEffectLabel); // Added new label to UI
                 _userInterface.AddWidget(_fpsLabel);
+                _userInterface.AddWidget(_profilerLabel); // Add profiler label to UI
                 _userInterface.AddWidget(_sampleButton);
                 _userInterface.AddWidget(_horizontalScale);
                 _userInterface.AddWidget(_verticalScale);
@@ -427,11 +449,13 @@ namespace GameEditor
 
                 // Update positions for all widgets after adding them
                 UpdateAllWidgetPositions();
+                _profiler.Stop("UIInitialization"); // Stop UI Initialization profiling
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing UI: {ex.Message}\n{ex.StackTrace}");
             }
+            _profiler.Stop("OnLoad"); // Stop OnLoad profiling
         }
 
         private void UpdateAllWidgetPositions()
@@ -444,31 +468,60 @@ namespace GameEditor
 
         protected override void OnRenderFrame(FrameEventArgs e)
         {
+            _profiler.Start("OnRenderFrame"); // Profile OnRenderFrame
             base.OnRenderFrame(e);
+            _profiler.Start("ClearBuffer");
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit); // Added DepthBufferBit
+            _profiler.Stop("ClearBuffer");
 
             _totalElapsedTime += e.Time; // Accumulate total time
 
+            _profiler.Start("FPSLabelUpdate");
             if (_fpsLabel != null)
             {
                 _fpsLabel.Text = $"FPS: {1f / e.Time:F0}";
                 // Update the label's position after its text (and thus width) has changed.
                 _fpsLabel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y);
             }
+            _profiler.Stop("FPSLabelUpdate");
+
+            _profiler.Start("ProfilerLabelUpdate");
+            if (_profilerLabel != null)
+            {
+                var sb = new StringBuilder("Profiler (ms):\n");
+                foreach (var section in _profiler.Sections.OrderBy(s => s.Name))
+                {
+                    sb.AppendLine($"  {section.Name}: {section.AverageElapsedTimeMilliseconds} (Last: {section.LastElapsedTimeMilliseconds})");
+                }
+                _profilerLabel.Text = sb.ToString();
+                _profilerLabel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y);
+            }
+            _profiler.Stop("ProfilerLabelUpdate");
 
             // Pass accumulated time and projection matrix to UserInterface.Draw
+            _profiler.Start("UIDraw");
             _userInterface.Draw((float)_totalElapsedTime, _projectionMatrix);
+            _profiler.Stop("UIDraw");
+
+            _profiler.Start("SwapBuffers");
             SwapBuffers();
+            _profiler.Stop("SwapBuffers");
+            _profiler.Stop("OnRenderFrame"); // Stop OnRenderFrame profiling
         }
 
         protected override void OnUpdateFrame(FrameEventArgs e)
         {
+            _profiler.Start("OnUpdateFrame"); // Profile OnUpdateFrame
             base.OnUpdateFrame(e);
             if (KeyboardState.IsKeyDown(Keys.Escape))
             {
                 Close();
             }
             // Potentially update widget states or handle input for UI elements here
+            _profiler.Start("UIUpdate");
+            _userInterface.Update((float)e.Time); // Assuming UserInterface has an Update method
+            _profiler.Stop("UIUpdate");
+            _profiler.Stop("OnUpdateFrame"); // Stop OnUpdateFrame profiling
         }
 
         protected override void OnResize(ResizeEventArgs e)
