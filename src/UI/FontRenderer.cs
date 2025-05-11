@@ -268,36 +268,76 @@ namespace GameFramework.UI
                 return;
             }
 
-            string fullTtfPath = System.IO.Path.GetFullPath(ttfPath);
-            if (!File.Exists(fullTtfPath))
+            string resolvedPath = "";
+            bool fileFound = false;
+
+            if (System.IO.Path.IsPathRooted(ttfPath))
             {
-                Console.WriteLine($"FontRenderer Error: TTF file not found at '{fullTtfPath}' (Original path: '{ttfPath}').");
+                if (File.Exists(ttfPath))
+                {
+                    resolvedPath = System.IO.Path.GetFullPath(ttfPath);
+                    fileFound = true;
+                }
+            }
+            else
+            {
+                string pathRelativeToCwd = System.IO.Path.GetFullPath(ttfPath);
+                if (File.Exists(pathRelativeToCwd))
+                {
+                    resolvedPath = pathRelativeToCwd;
+                    fileFound = true;
+                }
+                else
+                {
+                    string pathRelativeToBase = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, ttfPath));
+                    if (File.Exists(pathRelativeToBase))
+                    {
+                        resolvedPath = pathRelativeToBase;
+                        fileFound = true;
+                    }
+                    else
+                    {
+                        string pathRelativeToBaseAssets = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", ttfPath));
+                        if (File.Exists(pathRelativeToBaseAssets))
+                        {
+                            resolvedPath = pathRelativeToBaseAssets;
+                            fileFound = true;
+                        }
+                    }
+                }
+            }
+
+            if (!fileFound)
+            {
+                string originalAttemptForMsg = System.IO.Path.GetFullPath(ttfPath);
+                Console.WriteLine($"FontRenderer Error: TTF file not found. Original input: '{ttfPath}'. Attempted to resolve to (e.g.): '{originalAttemptForMsg}', and other common locations, but failed.");
+
                 if (!isInitializing)
                 {
                     if (!string.IsNullOrEmpty(_defaultFontKey) && _loadedFonts.TryGetValue(_defaultFontKey, out var defaultFont))
                     {
                         _activeFontInstance = defaultFont;
-                        Console.WriteLine($"Failed to load '{fullTtfPath}', reverted to default font: {_defaultFontKey}");
+                        Console.WriteLine($"Failed to load '{ttfPath}', reverted to default font: {_defaultFontKey}");
                     }
                     else if (_loadedFonts.Count > 0)
                     {
                         _activeFontInstance = _loadedFonts.Values.First();
-                        Console.WriteLine($"Failed to load '{fullTtfPath}', reverted to first available font: {_activeFontInstance.FilePath} ({_activeFontInstance.Size}pt)");
+                        Console.WriteLine($"Failed to load '{ttfPath}', reverted to first available font: {_activeFontInstance.FilePath} ({_activeFontInstance.Size}pt)");
                     }
                     else
                     {
                         _activeFontInstance = null;
-                        Console.WriteLine($"Failed to load '{fullTtfPath}', and no other fonts are available.");
+                        Console.WriteLine($"Failed to load '{ttfPath}', and no other fonts are available.");
                     }
                 }
                 else
                 {
-                    throw new FileNotFoundException($"TTF file not found during initialization. Path provided: '{ttfPath}', Resolved to: '{fullTtfPath}'", fullTtfPath);
+                    throw new FileNotFoundException($"TTF file not found during initialization. Original input: '{ttfPath}'. Attempted to resolve to (e.g.): '{originalAttemptForMsg}', and other common locations, but failed.", ttfPath);
                 }
                 return;
             }
 
-            string fontKey = GetFontKey(fullTtfPath, fontSize);
+            string fontKey = GetFontKey(resolvedPath, fontSize);
 
             if (_loadedFonts.TryGetValue(fontKey, out FontInstance? existingInstance))
             {
@@ -307,14 +347,14 @@ namespace GameFramework.UI
 
             try
             {
-                FontInstance newInstance = CreateFontInstance(fullTtfPath, fontSize);
+                FontInstance newInstance = CreateFontInstance(resolvedPath, fontSize);
                 _loadedFonts[fontKey] = newInstance;
                 _activeFontInstance = newInstance;
                 Console.WriteLine($"FontRenderer: Loaded and set active font: {fontKey}, TextureID: {newInstance.TextureID}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"FontRenderer Error: Failed to create font instance for {fontKey}. {ex.Message}\n{ex.StackTrace}");
+                Console.WriteLine($"FontRenderer Error: Failed to create font instance for {fontKey} (from path {resolvedPath}). {ex.Message}\n{ex.StackTrace}");
                 if (!isInitializing)
                 {
                     if (!string.IsNullOrEmpty(_defaultFontKey) && _loadedFonts.TryGetValue(_defaultFontKey, out var defaultFont))
@@ -336,21 +376,22 @@ namespace GameFramework.UI
             }
         }
 
-        private static FontInstance CreateFontInstance(string ttfPath, float fontSize)
+        private static FontInstance CreateFontInstance(string resolvedTtfPath, float fontSize)
         {
-            if (!File.Exists(ttfPath))
+            if (!File.Exists(resolvedTtfPath))
             {
-                throw new FileNotFoundException($"TTF file not found for CreateFontInstance. Path: '{ttfPath}'", ttfPath);
+                throw new FileNotFoundException($"TTF file not found for CreateFontInstance. Path: '{resolvedTtfPath}'", resolvedTtfPath);
             }
 
             FontFamily fontFamily;
-            if (!_fontCollection.TryGet(System.IO.Path.GetFileNameWithoutExtension(ttfPath), out fontFamily!))
+            string familyNameKey = System.IO.Path.GetFileNameWithoutExtension(resolvedTtfPath);
+            if (!_fontCollection.TryGet(familyNameKey, out fontFamily!))
             {
-                fontFamily = _fontCollection.Add(ttfPath);
+                fontFamily = _fontCollection.Add(resolvedTtfPath);
             }
             Font font = fontFamily.CreateFont(fontSize, FontStyle.Regular);
 
-            FontInstance instance = new FontInstance(ttfPath, fontSize, font);
+            FontInstance instance = new FontInstance(resolvedTtfPath, fontSize, font);
 
             var fontMetrics = font.FontMetrics;
             instance.ScaledAscender = (fontMetrics.VerticalMetrics.Ascender / (float)fontMetrics.UnitsPerEm) * font.Size;
