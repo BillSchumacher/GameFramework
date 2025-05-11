@@ -62,5 +62,26 @@ namespace GameFramework.Core
             _sections.TryGetValue(sectionName, out var section);
             return section;
         }
+
+        public string GetFormattedOutput(string title, bool forConsole)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine(title);
+            sb.AppendLine(new string('-', title.Length > 0 ? title.Length : 10)); // Separator
+
+            foreach (var section in Sections.OrderBy(s => s.Name))
+            {
+                if (forConsole)
+                {
+                    // Pad section name for alignment in console
+                    sb.AppendLine($"  {section.Name,-30}: Avg {section.AverageElapsedTimeMilliseconds,4} ms (Last: {section.LastElapsedTimeMilliseconds,4} ms)");
+                }
+                else // For in-game label (this specific formatting might be per-label now)
+                {
+                    sb.AppendLine($"{section.Name}: {section.AverageElapsedTimeMilliseconds}ms (L: {section.LastElapsedTimeMilliseconds}ms)");
+                }
+            }
+            return sb.ToString();
+        }
     }
 }

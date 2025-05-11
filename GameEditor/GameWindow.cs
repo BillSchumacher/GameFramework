@@ -29,6 +29,7 @@ namespace GameEditor
         private LabelWidget? _rainbowEffectLabel; // Added for character colors
         private LabelWidget? _fpsLabel;
         private LabelWidget? _profilerLabel; // Added for displaying profiler information
+        private PanelWidget? _profilerPanel; // Panel for profiler display
         private ButtonWidget? _sampleButton; // Added for the button
         private ScaleWidget? _horizontalScale;
         private ScaleWidget? _verticalScale;
@@ -48,6 +49,7 @@ namespace GameEditor
         private ButtonWidget? _scalableButton;
 
         private Profiler _profiler; // Added Profiler instance
+        private bool _logProfilerToConsole = true; // Option to log profiler to console
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -201,18 +203,30 @@ namespace GameEditor
                     offsetY: 10
                 );
 
-                // Profiler display label
-                _profilerLabel = new LabelWidget(
-                    id: "profilerLabel",
-                    x: 0, y: 0,
-                    text: "Profiler:",
-                    fontName: FontNameForUI,
-                    fontSize: (int)(DefaultFontSize * 0.9f), // Slightly smaller font
-                    textColor: new Vector3(0.9f, 0.9f, 0.7f), // Light yellow-ish
+                // Profiler display panel and label
+                _profilerPanel = new PanelWidget(
+                    id: "profilerPanel",
+                    x: 0, y: 0, // Anchored
+                    width: 350, // Adjust width as needed
+                    height: 150, // Adjust height as needed
+                    backgroundColor: new Vector4(0.1f, 0.1f, 0.1f, 0.7f), // Semi-transparent dark background
                     anchor: AnchorPoint.BottomLeft,
                     offsetX: 10,
                     offsetY: -10 // Position above bottom edge
                 );
+
+                _profilerLabel = new LabelWidget(
+                    id: "profilerLabel",
+                    x: 0, y: 0, // Relative to panel
+                    text: "Profiler:",
+                    fontName: FontNameForUI,
+                    fontSize: (int)(DefaultFontSize * 0.8f), 
+                    textColor: new Vector3(0.9f, 0.9f, 0.9f),
+                    anchor: AnchorPoint.TopLeft, // Anchor within the panel
+                    offsetX: 5, // Padding within the panel
+                    offsetY: 5  // Padding within the panel
+                );
+                _profilerPanel.AddChild(_profilerLabel); // Add label to panel
 
                 // Initialize ButtonWidget with anchoring
                 _sampleButton = new ButtonWidget(
@@ -437,7 +451,7 @@ namespace GameEditor
                 _userInterface.AddWidget(_typewriterEffectLabel);
                 _userInterface.AddWidget(_rainbowEffectLabel); // Added new label to UI
                 _userInterface.AddWidget(_fpsLabel);
-                _userInterface.AddWidget(_profilerLabel); // Add profiler label to UI
+                _userInterface.AddWidget(_profilerPanel); // Add profiler panel to UI
                 _userInterface.AddWidget(_sampleButton);
                 _userInterface.AddWidget(_horizontalScale);
                 _userInterface.AddWidget(_verticalScale);
@@ -485,18 +499,21 @@ namespace GameEditor
             }
             _profiler.Stop("FPSLabelUpdate");
 
-            _profiler.Start("ProfilerLabelUpdate");
-            if (_profilerLabel != null)
+            _profiler.Start("ProfilerUpdate");
+            string profilerTitle = "Profiler (ms):";
+            if (_logProfilerToConsole)
             {
-                var sb = new StringBuilder("Profiler (ms):\n");
-                foreach (var section in _profiler.Sections.OrderBy(s => s.Name))
-                {
-                    sb.AppendLine($"  {section.Name}: {section.AverageElapsedTimeMilliseconds} (Last: {section.LastElapsedTimeMilliseconds})");
-                }
-                _profilerLabel.Text = sb.ToString();
-                _profilerLabel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y);
+                Console.Clear(); // Clear console for fresh output
+                Console.WriteLine(_profiler.GetFormattedOutput(profilerTitle, true));
             }
-            _profiler.Stop("ProfilerLabelUpdate");
+
+            if (_profilerPanel != null && _profilerLabel != null) // Ensure panel and label exist
+            {
+                _profilerLabel.Text = _profiler.GetFormattedOutput(profilerTitle, false);
+                _profilerPanel.UpdateActualPosition(0, 0, ClientSize.X, ClientSize.Y); // Update panel first
+                _profilerLabel.UpdateActualPosition(_profilerPanel.ActualX, _profilerPanel.ActualY, _profilerPanel.WidgetWidth, _profilerPanel.WidgetHeight); // Then child label relative to panel
+            }
+            _profiler.Stop("ProfilerUpdate");
 
             // Pass accumulated time and projection matrix to UserInterface.Draw
             _profiler.Start("UIDraw");
