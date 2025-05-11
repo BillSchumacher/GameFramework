@@ -10,6 +10,7 @@ using System.IO; // Keep this for File.Exists, etc.
 using System.Linq;
 using GameFramework.Rendering; // Added for ShaderHelper
 using System.Reflection; // Added for path resolution
+using System; // Added for Math.Sin
 // System.Numerics.Vector2 and System.Numerics.PointF are used by SixLabors.Fonts
 // OpenTK.Mathematics.Vector2 is used for GL operations. Disambiguate where necessary.
 
@@ -65,6 +66,8 @@ namespace GameFramework.UI
         private static OpenTK.Mathematics.Vector3 _currentColor = OpenTK.Mathematics.Vector3.Zero; // Default to Black
         private static float _fontLineHeight = 0;
         private static float _scaledAscender = 0f; // Added for Y-coordinate calculation
+
+        private static Random _random = new Random(); // Added for RandomBounce effect
 
         /// <summary>Gets or sets the current screen width for projection matrix calculation.</summary>
         public static float ScreenWidth { get; set; } = 800f;
@@ -374,11 +377,28 @@ namespace GameFramework.UI
 
         /// <summary>
         /// Draws the specified text string at the given screen coordinates (top-left origin).
+        /// This overload defaults to no text effect.
         /// </summary>
         /// <param name="text">The string to render.</param>
         /// <param name="startX">The x-coordinate for the top-left of the text.</param>
         /// <param name="startY">The y-coordinate for the top-left of the text.</param>
         public static void DrawText(string text, float startX, float startY)
+        {
+            DrawText(text, startX, startY, TextEffect.None, 0f, 0f, 0f);
+        }
+
+        /// <summary>
+        /// Draws the specified text string at the given screen coordinates (top-left origin),
+        /// optionally applying a text effect.
+        /// </summary>
+        /// <param name="text">The string to render.</param>
+        /// <param name="startX">The x-coordinate for the top-left of the text.</param>
+        /// <param name="startY">The y-coordinate for the top-left of the text.</param>
+        /// <param name="effect">The text effect to apply.</param>
+        /// <param name="effectStrength">The strength of the effect (e.g., bounce height).</param>
+        /// <param name="effectSpeed">The speed of the effect (e.g., bounce cycles per second).</param>
+        /// <param name="elapsedTime">The total elapsed time, used for animation.</param>
+        public static void DrawText(string text, float startX, float startY, TextEffect effect, float effectStrength, float effectSpeed, float elapsedTime)
         {
             if (_shaderProgram == -1 || string.IsNullOrEmpty(text) || FontTextureID <= 0 || _characterMetrics.Count == 0)
             {
@@ -395,61 +415,73 @@ namespace GameFramework.UI
             GL.BindVertexArray(_vao);
             GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo); 
 
-            float currentPenX = startX; // Start drawing from startX
+            float currentPenX = startX;
+            float charIndex = 0; // For staggering effects like bounce
 
             foreach (char c in text)
             {
                 if (!_characterMetrics.TryGetValue(c, out CharacterMetrics metrics))
                 {
-                    if (_characterMetrics.TryGetValue('?', out metrics)) // Fallback to '?'
+                    if (!_characterMetrics.TryGetValue('?', out metrics)) 
                     {
-                        // Use '?' metrics
-                    }
-                    else
-                    {
-                        currentPenX += GetTextWidth(" ") / 2; // Arbitrary advance if '?' also missing
+                        currentPenX += GetTextWidth(" ") / 2; 
                         continue;
                     }
                 }
 
-                if (c == ' ') // Handle space specifically for advance
+                if (c == ' ')
                 {
                     currentPenX += metrics.Advance;
+                    charIndex++;
                     continue;
                 }
                 
-                // Skip rendering for characters with no visual dimension, but still advance
                 if (metrics.Width == 0 || metrics.Height == 0)
                 {
                     currentPenX += metrics.Advance;
+                    charIndex++;
                     continue;
                 }
 
                 float xPos = currentPenX + metrics.Bearing.X;
+                float yOffset = 0;
+
+                if (effect == TextEffect.Bounce)
+                {
+                    yOffset = (float)Math.Sin((elapsedTime * effectSpeed * 2 * Math.PI) + (charIndex * 0.5f)) * effectStrength;
+                }
+                else if (effect == TextEffect.RandomBounce)
+                {
+                    int charSeed = (int)charIndex * 12345; // Multiply by a prime to spread seeds
+                    Random charRandom = new Random(charSeed);
+
+                    float charStrength = effectStrength * (0.5f + (float)charRandom.NextDouble() * 0.5f);
+                    float charSpeed = effectSpeed * (0.5f + (float)charRandom.NextDouble()); 
+                    float phaseOffset = (float)charRandom.NextDouble() * 2.0f * (float)Math.PI;
+
+                    yOffset = (float)Math.Sin((elapsedTime * charSpeed * 2 * Math.PI) + phaseOffset) * charStrength;
+                }
                 
-                // Corrected yPos calculation:
-                // Assumes startY is the ascender line (top of the text line).
-                // Assumes metrics.Bearing.Y is the distance DOWNWARDS from the ascender line to the character's glyph top.
-                float yPos = startY + metrics.Bearing.Y;
+                float yPos = startY + metrics.Bearing.Y + yOffset;
 
                 float w = metrics.Width;
                 float h = metrics.Height;
 
-                // Quad vertices: TopLeft, BottomLeft, TopRight, BottomLeft, BottomRight, TopRight
-                _quadVertices[0] = xPos; _quadVertices[1] = yPos; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV;                                         // Top-left
-                _quadVertices[4] = xPos; _quadVertices[5] = yPos + h; _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV + metrics.TexHeight;                     // Bottom-left
-                _quadVertices[8] = xPos + w; _quadVertices[9] = yPos; _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV;                      // Top-right
+                _quadVertices[0] = xPos; _quadVertices[1] = yPos; _quadVertices[2] = metrics.TexU; _quadVertices[3] = metrics.TexV;                                         
+                _quadVertices[4] = xPos; _quadVertices[5] = yPos + h; _quadVertices[6] = metrics.TexU; _quadVertices[7] = metrics.TexV + metrics.TexHeight;                     
+                _quadVertices[8] = xPos + w; _quadVertices[9] = yPos; _quadVertices[10] = metrics.TexU + metrics.TexWidth; _quadVertices[11] = metrics.TexV;                      
 
-                _quadVertices[12] = xPos; _quadVertices[13] = yPos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight;                  // Bottom-left
-                _quadVertices[16] = xPos + w; _quadVertices[17] = yPos + h; _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV + metrics.TexHeight; // Bottom-right
-                _quadVertices[20] = xPos + w; _quadVertices[21] = yPos; _quadVertices[22] = metrics.TexU + metrics.TexWidth; _quadVertices[23] = metrics.TexV;                   // Top-right
+                _quadVertices[12] = xPos; _quadVertices[13] = yPos + h; _quadVertices[14] = metrics.TexU; _quadVertices[15] = metrics.TexV + metrics.TexHeight;                  
+                _quadVertices[16] = xPos + w; _quadVertices[17] = yPos + h; _quadVertices[18] = metrics.TexU + metrics.TexWidth; _quadVertices[19] = metrics.TexV + metrics.TexHeight; 
+                _quadVertices[20] = xPos + w; _quadVertices[21] = yPos; _quadVertices[22] = metrics.TexU + metrics.TexWidth; _quadVertices[23] = metrics.TexV;                   
 
                 GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, _quadVertices.Length * sizeof(float), _quadVertices);
-                Matrix4 modelMatrix = Matrix4.Identity; // Text is drawn in screen coordinates, model is identity
+                Matrix4 modelMatrix = Matrix4.Identity; 
                 GL.UniformMatrix4(_modelMatrixLocation, false, ref modelMatrix);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
                 currentPenX += metrics.Advance;
+                charIndex++;
             }
 
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);

@@ -167,7 +167,8 @@ namespace GameFramework.UI
             return false; // Event not handled
         }
 
-        public override void Draw()
+        // Modified Draw method to accept elapsedTime and pass it to the label
+        public void Draw(float elapsedTime) // Changed from Draw() to Draw(float elapsedTime)
         {
             if (!IsVisible) return;
             if (_colorShaderProgram <= 0 || _vao <= 0 || _vbo <= 0)
@@ -183,7 +184,6 @@ namespace GameFramework.UI
 
             // Draw Button Background
             GL.UseProgram(_colorShaderProgram);
-            // Use this.X and this.Y which are the calculated absolute screen positions from UpdateActualPosition
             Matrix4 model = Matrix4.CreateScale(this.WidgetWidth, this.WidgetHeight, 1.0f) * Matrix4.CreateTranslation(this.X, this.Y, 0.0f);
             GL.UniformMatrix4(_projectionMatrixLocation, false, ref _projectionMatrix);
             GL.UniformMatrix4(_modelMatrixLocation, false, ref model);
@@ -196,13 +196,16 @@ namespace GameFramework.UI
             // Draw Label
             if (_label != null)
             {
-                // _label.X and _label.Y are relative to the button.
-                // Pass the button's absolute screen coordinates (this.X, this.Y) to the label's Draw method.
-                _label.Draw(this.X, this.Y);
+                _label.Draw(this.X, this.Y, elapsedTime); // Pass elapsedTime here
             }
 
-            GL.UseProgram(0); // Reset active program
+            GL.UseProgram(0); 
         }
-        // No Dispose method as static GL resources are handled globally and LabelWidget has no IDisposable resources.
+
+        // Override the parameterless Draw to call the one with elapsedTime
+        public override void Draw()
+        {
+            Draw(0.0f); 
+        }
     }
 }

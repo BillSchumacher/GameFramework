@@ -21,6 +21,7 @@ namespace GameEditor
         private LabelWidget? _helloWorldLabel;
         private LabelWidget? _fpsLabel;
         private ButtonWidget? _sampleButton; // Added for the button
+        private double _totalElapsedTime = 0.0; // Field to accumulate total elapsed time
 
         public GameWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -59,7 +60,10 @@ namespace GameEditor
                     textColor: new Vector3(1.0f, 1.0f, 1.0f),
                     anchor: AnchorPoint.TopLeft,
                     offsetX: 10, 
-                    offsetY: 10
+                    offsetY: 10,
+                    currentTextEffect: TextEffect.RandomBounce, // Changed to RandomBounce
+                    effectSpeed: 1.5f,    // Adjust speed as needed
+                    effectStrength: 5.0f  // Adjust strength as needed
                 );
 
                 _fpsLabel = new LabelWidget(
@@ -117,6 +121,8 @@ namespace GameEditor
             base.OnRenderFrame(e);
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
+            _totalElapsedTime += e.Time; // Accumulate total time
+
             if (_fpsLabel != null)
             {
                 _fpsLabel.Text = $"FPS: {1f / e.Time:F0}";
@@ -124,7 +130,8 @@ namespace GameEditor
                 _fpsLabel.UpdateActualPosition(ClientSize.X, ClientSize.Y);
             }
 
-            _userInterface.Draw();
+            // Pass accumulated time to UserInterface.Draw
+            _userInterface.Draw((float)_totalElapsedTime);
             SwapBuffers();
         }
 

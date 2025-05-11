@@ -59,15 +59,27 @@ namespace GameFramework
             return Widgets.AsReadOnly();
         }
 
-        public void Draw()
+        // Modified Draw method to accept elapsedTime
+        public void Draw(float elapsedTime)
         {
-            // Draw widgets in the order they were added. 
-            // For click handling, we iterate in reverse.
             foreach (var widget in Widgets)
             {
                 if (widget.IsVisible)
                 {
-                    widget.Draw(); 
+                    // Check if the widget is a LabelWidget to pass elapsedTime
+                    // For other widget types, call their existing Draw() or adapt as needed
+                    if (widget is LabelWidget label)
+                    {
+                        // Assuming LabelWidget.Draw now takes parentAbsoluteX, parentAbsoluteY, and elapsedTime.
+                        // For UI elements directly on the UserInterface, parentAbsoluteX and Y are 0.
+                        label.Draw(0, 0, elapsedTime);
+                    }
+                    else
+                    {
+                        // Fallback for other widget types that might not have an elapsedTime-aware Draw method yet.
+                        // Or, if all widgets are expected to have Draw(float elapsedTime), this could be simplified.
+                        widget.Draw(); 
+                    }
                 }
             }
         }

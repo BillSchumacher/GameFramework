@@ -201,7 +201,7 @@ namespace GameFramework.Tests.Core
             ui.AddWidget(hiddenWidget);
 
             // Act
-            ui.Draw();
+            ui.Draw(0.0f); // Pass 0.0f for elapsedTime
 
             // Assert
             Assert.Equal(1, visibleWidget.DrawCallCount);
